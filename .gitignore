@@ -5,6 +5,7 @@ __pycache__/
 __pycache__
 *.pt
 path/
+.continue
 # C extensions
 *.so
 
