@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoScan Pro — Vehicle Inspection System</title>
+    <meta name="description" content="Professional AI-powered vehicle inspection system for detecting car defects in real-time.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Login Screen -->
+        <div id="screen-login" class="screen active">
+            <div class="login-bg">
+                <div class="login-particles"></div>
+                <div class="login-card glass-card" id="login-card">
+                    <div class="login-logo">
+                        <div class="logo-icon">
+                            <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+                                <rect x="4" y="20" width="40" height="18" rx="4" stroke="#00E5FF" stroke-width="2.5"/>
+                                <path d="M10 20L16 8H32L38 20" stroke="#00E5FF" stroke-width="2.5" stroke-linecap="round"/>
+                                <circle cx="13" cy="38" r="4" stroke="#00E5FF" stroke-width="2"/>
+                                <circle cx="35" cy="38" r="4" stroke="#00E5FF" stroke-width="2"/>
+                                <circle cx="24" cy="26" r="3" fill="#00E5FF" opacity="0.8"/>
+                                <line x1="20" y1="26" x2="28" y2="26" stroke="#00E5FF" stroke-width="1.5"/>
+                                <line x1="24" y1="22" x2="24" y2="30" stroke="#00E5FF" stroke-width="1.5"/>
+                            </svg>
+                        </div>
+                        <h1 class="login-title">AutoScan Pro</h1>
+                        <p class="login-subtitle">Vehicle Inspection System</p>
+                    </div>
+                    <form id="login-form" class="login-form">
+                        <div class="form-group">
+                            <label for="login-email">Email</label>
+                            <div class="input-icon-wrapper">
+                                <svg class="input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                                <input type="email" id="login-email" placeholder="Enter your email" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="login-password">Password</label>
+                            <div class="input-icon-wrapper">
+                                <svg class="input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                <input type="password" id="login-password" placeholder="Enter your password" required>
+                                <button type="button" class="password-toggle" onclick="togglePassword()">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Login as</label>
+                            <div class="role-selector">
+                                <button type="button" class="role-btn active" data-role="inspector" onclick="selectRole('inspector')">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                    Inspector
+                                </button>
+                                <button type="button" class="role-btn" data-role="manager" onclick="selectRole('manager')">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                                    Manager
+                                </button>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-full" id="login-btn">
+                            <span>Sign In</span>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                        </button>
+                        <div id="login-error" class="form-error" style="display:none;"></div>
+                    </form>
+                    <div class="login-footer">
+                        <p>Don't have an account? <a href="#" onclick="showRegister(event)">Create one</a></p>
+                    </div>
+                </div>
+
+                <!-- Register Card (hidden by default) -->
+                <div class="login-card glass-card" id="register-card" style="display:none;">
+                    <div class="login-logo">
+                        <h2 class="login-title" style="font-size:1.6rem;">Create Account</h2>
+                        <p class="login-subtitle">Join AutoScan Pro</p>
+                    </div>
+                    <form id="register-form" class="login-form">
+                        <div class="form-group">
+                            <label for="reg-name">Full Name</label>
+                            <input type="text" id="reg-name" placeholder="Enter your name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="reg-email">Email</label>
+                            <input type="email" id="reg-email" placeholder="Enter your email" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="reg-password">Password</label>
+                            <input type="password" id="reg-password" placeholder="Choose a password" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Role</label>
+                            <div class="role-selector">
+                                <button type="button" class="role-btn active" data-role="inspector" onclick="selectRegRole('inspector')">Inspector</button>
+                                <button type="button" class="role-btn" data-role="manager" onclick="selectRegRole('manager')">Manager</button>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-full">Create Account</button>
+                        <div id="register-error" class="form-error" style="display:none;"></div>
+                        <div id="register-success" class="form-success" style="display:none;"></div>
+                    </form>
+                    <div class="login-footer">
+                        <p>Already have an account? <a href="#" onclick="showLogin(event)">Sign in</a></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main App Layout (after login) -->
+        <div id="screen-app" class="screen" style="display:none;">
+            <!-- Sidebar -->
+            <nav id="sidebar" class="sidebar">
+                <div class="sidebar-header">
+                    <div class="sidebar-logo">
+                        <svg width="28" height="28" viewBox="0 0 48 48" fill="none">
+                            <rect x="4" y="20" width="40" height="18" rx="4" stroke="#00E5FF" stroke-width="2.5"/>
+                            <path d="M10 20L16 8H32L38 20" stroke="#00E5FF" stroke-width="2.5" stroke-linecap="round"/>
+                            <circle cx="13" cy="38" r="4" stroke="#00E5FF" stroke-width="2"/>
+                            <circle cx="35" cy="38" r="4" stroke="#00E5FF" stroke-width="2"/>
+                        </svg>
+                        <span class="sidebar-brand">AutoScan Pro</span>
+                    </div>
+                </div>
+                <ul class="sidebar-nav">
+                    <li class="nav-item active" data-page="dashboard" onclick="navigateTo('dashboard')">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                        <span>Dashboard</span>
+                    </li>
+                    <li class="nav-item" data-page="new-inspection" onclick="navigateTo('new-inspection')">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                        <span>New Inspection</span>
+                    </li>
+                    <li class="nav-item" data-page="history" onclick="navigateTo('history')">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        <span>History</span>
+                    </li>
+                    <li class="nav-item" data-page="detection" id="nav-detection" style="display:none;" onclick="navigateTo('detection')">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                        <span>Live Scan</span>
+                    </li>
+                    <li class="nav-item" data-page="review" id="nav-review" style="display:none;" onclick="navigateTo('review')">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+                        <span>Review</span>
+                    </li>
+                    <li class="nav-item" data-page="report" id="nav-report" style="display:none;" onclick="navigateTo('report')">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                        <span>Report</span>
+                    </li>
+                </ul>
+                <div class="sidebar-footer">
+                    <div class="user-info" id="sidebar-user-info">
+                        <div class="user-avatar" id="user-avatar">A</div>
+                        <div class="user-details">
+                            <span class="user-name" id="user-name">User</span>
+                            <span class="user-role-badge" id="user-role-badge">Inspector</span>
+                        </div>
+                    </div>
+                    <button class="btn-icon" onclick="logout()" title="Logout">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                    </button>
+                </div>
+            </nav>
+
+            <!-- Main Content Area -->
+            <main class="main-content">
+                <!-- Top Bar -->
+                <header class="topbar">
+                    <div class="topbar-left">
+                        <h2 class="page-title" id="page-title">Dashboard</h2>
+                    </div>
+                    <div class="topbar-right">
+                        <div class="topbar-search">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                            <input type="text" placeholder="Search..." id="global-search">
+                        </div>
+                    </div>
+                </header>
+
+                <!-- Page Container -->
+                <div class="page-container">
+
+                    <!-- Dashboard Page -->
+                    <div id="page-dashboard" class="page active">
+                        <div class="stats-grid">
+                            <div class="stat-card stat-active">
+                                <div class="stat-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+                                <div class="stat-info">
+                                    <span class="stat-value" id="stat-active">0</span>
+                                    <span class="stat-label">Active Inspections</span>
+                                </div>
+                                <div class="stat-pulse"></div>
+                            </div>
+                            <div class="stat-card stat-completed">
+                                <div class="stat-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+                                <div class="stat-info">
+                                    <span class="stat-value" id="stat-completed">0</span>
+                                    <span class="stat-label">Completed Today</span>
+                                </div>
+                            </div>
+                            <div class="stat-card stat-pending">
+                                <div class="stat-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+                                <div class="stat-info">
+                                    <span class="stat-value" id="stat-pending">0</span>
+                                    <span class="stat-label">Pending Reports</span>
+                                </div>
+                            </div>
+                            <div class="stat-card stat-vehicles">
+                                <div class="stat-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="10" width="22" height="10" rx="2"/><path d="M5 10l3-6h8l3 6"/><circle cx="7" cy="20" r="2"/><circle cx="17" cy="20" r="2"/></svg></div>
+                                <div class="stat-info">
+                                    <span class="stat-value" id="stat-vehicles">0</span>
+                                    <span class="stat-label">Total Vehicles</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button class="btn btn-primary btn-cta" onclick="navigateTo('new-inspection')">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                            Start New Inspection
+                        </button>
+
+                        <div class="table-section">
+                            <h3 class="section-title">Recent Inspections</h3>
+                            <div class="table-wrapper">
+                                <table class="data-table" id="recent-inspections-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Vehicle</th>
+                                            <th>Inspector</th>
+                                            <th>Status</th>
+                                            <th>Defects</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="recent-inspections-body">
+                                        <tr><td colspan="6" class="empty-state">No inspections yet. Start your first one!</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- New Inspection Page -->
+                    <div id="page-new-inspection" class="page">
+                        <div class="stepper">
+                            <div class="step active" data-step="1"><span class="step-num">1</span><span class="step-label">Vehicle Info</span></div>
+                            <div class="step-line"></div>
+                            <div class="step" data-step="2"><span class="step-num">2</span><span class="step-label">Owner Info</span></div>
+                            <div class="step-line"></div>
+                            <div class="step" data-step="3"><span class="step-num">3</span><span class="step-label">Confirm & Start</span></div>
+                        </div>
+
+                        <form id="inspection-form">
+                            <!-- Step 1: Vehicle Info -->
+                            <div id="step-1" class="form-step active">
+                                <h3 class="form-section-title">Vehicle Information</h3>
+                                <div class="form-grid">
+                                    <div class="form-group">
+                                        <label for="v-make">Make *</label>
+                                        <input type="text" id="v-make" placeholder="e.g. Toyota" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="v-model">Model *</label>
+                                        <input type="text" id="v-model" placeholder="e.g. Camry" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="v-year">Year</label>
+                                        <input type="number" id="v-year" placeholder="e.g. 2024" min="1900" max="2030">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="v-color">Color</label>
+                                        <input type="text" id="v-color" placeholder="e.g. White">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="v-plate">License Plate</label>
+                                        <input type="text" id="v-plate" placeholder="e.g. ABC-1234">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="v-vin">VIN</label>
+                                        <input type="text" id="v-vin" placeholder="17-character VIN" maxlength="17">
+                                    </div>
+                                    <div class="form-group full-width">
+                                        <label for="v-mileage">Mileage (km)</label>
+                                        <input type="number" id="v-mileage" placeholder="e.g. 45000" min="0">
+                                    </div>
+                                </div>
+                                <div class="form-actions">
+                                    <button type="button" class="btn btn-ghost" onclick="navigateTo('dashboard')">Cancel</button>
+                                    <button type="button" class="btn btn-primary" onclick="goToStep(2)">Next →</button>
+                                </div>
+                            </div>
+
+                            <!-- Step 2: Owner Info -->
+                            <div id="step-2" class="form-step">
+                                <h3 class="form-section-title">Owner Information</h3>
+                                <div class="form-grid">
+                                    <div class="form-group">
+                                        <label for="o-name">Owner Name</label>
+                                        <input type="text" id="o-name" placeholder="Full name">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="o-email">Owner Email</label>
+                                        <input type="email" id="o-email" placeholder="owner@email.com">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="o-phone">Phone Number</label>
+                                        <input type="tel" id="o-phone" placeholder="+1 234 567 890">
+                                    </div>
+                                </div>
+                                <div class="form-actions">
+                                    <button type="button" class="btn btn-ghost" onclick="goToStep(1)">← Back</button>
+                                    <button type="button" class="btn btn-primary" onclick="goToStep(3)">Next →</button>
+                                </div>
+                            </div>
+
+                            <!-- Step 3: Confirm -->
+                            <div id="step-3" class="form-step">
+                                <h3 class="form-section-title">Confirm & Start Inspection</h3>
+                                <div class="confirm-summary" id="confirm-summary">
+                                    <!-- Filled dynamically -->
+                                </div>
+                                <div class="form-group full-width">
+                                    <label for="i-notes">Inspection Notes (optional)</label>
+                                    <textarea id="i-notes" rows="3" placeholder="Any initial observations..."></textarea>
+                                </div>
+                                <div class="form-actions">
+                                    <button type="button" class="btn btn-ghost" onclick="goToStep(2)">← Back</button>
+                                    <button type="button" class="btn btn-primary btn-cta" onclick="startInspection()" id="start-inspection-btn">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                                        Start Scanning
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Live Detection Page -->
+                    <div id="page-detection" class="page">
+                        <div class="phase-bar">
+                            <div class="phase-dot completed"></div><span class="phase-name">Registration</span>
+                            <div class="phase-connector active"></div>
+                            <div class="phase-dot active pulse"></div><span class="phase-name active-label">Exterior Scan</span>
+                            <div class="phase-connector"></div>
+                            <div class="phase-dot"></div><span class="phase-name">Review</span>
+                            <div class="phase-connector"></div>
+                            <div class="phase-dot"></div><span class="phase-name">Report</span>
+                            <div class="phase-connector"></div>
+                            <div class="phase-dot"></div><span class="phase-name">Delivery</span>
+                        </div>
+
+                        <div class="detection-layout">
+                            <div class="video-area">
+                                <div class="video-container">
+                                    <canvas id="video-canvas" width="640" height="480"></canvas>
+                                    <div class="video-overlay" id="video-overlay">
+                                        <div class="scanning-indicator" id="scanning-indicator">
+                                            <div class="scan-pulse"></div>
+                                            <span>SCANNING...</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="video-controls">
+                                    <button class="btn btn-ghost" id="btn-pause" onclick="togglePause()">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                                        Pause
+                                    </button>
+                                    <button class="btn btn-danger" onclick="endScan()">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+                                        End Scan
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="detection-sidebar">
+                                <div class="detection-header">
+                                    <h3>Detected Faults</h3>
+                                    <span class="defect-count" id="defect-count">0 found</span>
+                                </div>
+                                <div class="detection-list" id="detection-list">
+                                    <div class="empty-detection">
+                                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                        <p>Scanning for defects...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Defect Review Page -->
+                    <div id="page-review" class="page">
+                        <div class="phase-bar">
+                            <div class="phase-dot completed"></div><span class="phase-name">Registration</span>
+                            <div class="phase-connector completed"></div>
+                            <div class="phase-dot completed"></div><span class="phase-name">Exterior Scan</span>
+                            <div class="phase-connector active"></div>
+                            <div class="phase-dot active pulse"></div><span class="phase-name active-label">Review</span>
+                            <div class="phase-connector"></div>
+                            <div class="phase-dot"></div><span class="phase-name">Report</span>
+                            <div class="phase-connector"></div>
+                            <div class="phase-dot"></div><span class="phase-name">Delivery</span>
+                        </div>
+
+                        <div class="review-summary" id="review-summary">
+                            <div class="summary-stat cyan"><span id="rev-detected">0</span> Detected</div>
+                            <div class="summary-stat green"><span id="rev-confirmed">0</span> Confirmed</div>
+                            <div class="summary-stat red"><span id="rev-rejected">0</span> Rejected</div>
+                            <div class="summary-stat orange"><span id="rev-pending">0</span> Pending</div>
+                        </div>
+
+                        <div class="defect-grid" id="defect-grid">
+                            <!-- Defect cards populated dynamically -->
+                        </div>
+
+                        <div class="form-actions" style="margin-top:24px;">
+                            <button class="btn btn-primary btn-cta" onclick="generateReport()">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                Generate Report
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Report Preview Page -->
+                    <div id="page-report" class="page">
+                        <div class="phase-bar">
+                            <div class="phase-dot completed"></div><span class="phase-name">Registration</span>
+                            <div class="phase-connector completed"></div>
+                            <div class="phase-dot completed"></div><span class="phase-name">Exterior Scan</span>
+                            <div class="phase-connector completed"></div>
+                            <div class="phase-dot completed"></div><span class="phase-name">Review</span>
+                            <div class="phase-connector active"></div>
+                            <div class="phase-dot active pulse"></div><span class="phase-name active-label">Report</span>
+                            <div class="phase-connector"></div>
+                            <div class="phase-dot"></div><span class="phase-name">Delivery</span>
+                        </div>
+
+                        <div class="report-layout">
+                            <div class="report-preview" id="report-preview">
+                                <div class="report-loading">
+                                    <div class="spinner"></div>
+                                    <p>Generating report...</p>
+                                </div>
+                            </div>
+                            <div class="report-actions-panel">
+                                <h3>Actions</h3>
+                                <button class="btn btn-primary btn-full" onclick="downloadReport()">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                    Download PDF
+                                </button>
+                                <div class="form-group" style="margin-top:16px;">
+                                    <label for="send-client-email">Client Email</label>
+                                    <input type="email" id="send-client-email" placeholder="client@email.com">
+                                </div>
+                                <div class="form-group">
+                                    <label for="send-manager-email">Manager Email</label>
+                                    <input type="email" id="send-manager-email" placeholder="manager@email.com">
+                                </div>
+                                <div class="form-group">
+                                    <label for="send-note">Additional Note</label>
+                                    <textarea id="send-note" rows="3" placeholder="Optional note..."></textarea>
+                                </div>
+                                <button class="btn btn-primary btn-full" onclick="sendReport()" id="send-report-btn">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                                    Send Report
+                                </button>
+                                <button class="btn btn-ghost btn-full" style="margin-top:12px;" onclick="completeInspection()">
+                                    ✓ Complete Inspection
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- History Page -->
+                    <div id="page-history" class="page">
+                        <div class="filter-bar">
+                            <div class="filter-group">
+                                <label>Status</label>
+                                <select id="filter-status" onchange="loadHistory()">
+                                    <option value="">All</option>
+                                    <option value="scanning">Scanning</option>
+                                    <option value="reviewing">Reviewing</option>
+                                    <option value="completed">Completed</option>
+                                </select>
+                            </div>
+                            <div class="filter-group">
+                                <label>Search</label>
+                                <input type="text" id="filter-search" placeholder="Search vehicle..." oninput="loadHistory()">
+                            </div>
+                        </div>
+                        <div class="table-wrapper">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Vehicle</th>
+                                        <th>Inspector</th>
+                                        <th>Status</th>
+                                        <th>Defects</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="history-body">
+                                    <tr><td colspan="6" class="empty-state">Loading...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast" style="display:none;"></div>
+
+    <script src="/js/api.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/app.js"></script>
+    <script src="/js/dashboard.js"></script>
+    <script src="/js/inspection.js"></script>
+    <script src="/js/detection.js"></script>
+    <script src="/js/review.js"></script>
+    <script src="/js/report.js"></script>
+    <script src="/js/history.js"></script>
+</body>
+</html>

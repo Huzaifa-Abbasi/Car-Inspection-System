@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Vehicle Inspection Report</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 1.5cm 2cm;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Inter', Arial, sans-serif;
+            color: #1a1a2e;
+            font-size: 11pt;
+            line-height: 1.5;
+        }
+
+        /* Header */
+        .report-header {
+            background: linear-gradient(135deg, #0a0a1a, #1a1a3e);
+            color: white;
+            padding: 24px 32px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+        }
+
+        .report-header h1 {
+            font-size: 22pt;
+            font-weight: 700;
+            margin-bottom: 4px;
+            color: #00E5FF;
+        }
+
+        .report-header .tagline {
+            font-size: 10pt;
+            color: #aab;
+        }
+
+        .report-header .report-title {
+            font-size: 14pt;
+            font-weight: 600;
+            margin-top: 12px;
+            color: white;
+        }
+
+        /* Sections */
+        .section {
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-size: 13pt;
+            font-weight: 700;
+            color: #1a1a3e;
+            border-bottom: 2px solid #00E5FF;
+            padding-bottom: 4px;
+            margin-bottom: 12px;
+        }
+
+        /* Info Grid */
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px 24px;
+        }
+
+        .info-item {
+            display: flex;
+            gap: 8px;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: #555;
+            min-width: 120px;
+        }
+
+        .info-value {
+            color: #1a1a2e;
+        }
+
+        /* Severity Summary */
+        .severity-summary {
+            display: flex;
+            gap: 16px;
+            margin: 12px 0;
+        }
+
+        .severity-badge {
+            padding: 8px 20px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 12pt;
+            color: white;
+        }
+
+        .severity-severe { background: #dc3545; }
+        .severity-moderate { background: #ff8c00; }
+        .severity-minor { background: #ffc107; color: #333; }
+
+        /* Defect Table */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 8px;
+        }
+
+        th {
+            background: #1a1a3e;
+            color: white;
+            padding: 8px 12px;
+            text-align: left;
+            font-size: 10pt;
+        }
+
+        td {
+            padding: 8px 12px;
+            border-bottom: 1px solid #e0e0e0;
+            font-size: 10pt;
+        }
+
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        /* Severity cell colors */
+        .severity-cell-severe { color: #dc3545; font-weight: 700; }
+        .severity-cell-moderate { color: #ff8c00; font-weight: 700; }
+        .severity-cell-minor { color: #c8a000; font-weight: 600; }
+
+        /* Defect Cards */
+        .defect-cards {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-top: 12px;
+        }
+
+        .defect-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            page-break-inside: avoid;
+        }
+
+        .defect-card img {
+            width: 100%;
+            height: 140px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .defect-card .card-body {
+            padding: 10px 12px;
+        }
+
+        .defect-card .fault-type {
+            font-weight: 700;
+            font-size: 11pt;
+            text-transform: capitalize;
+        }
+
+        .defect-card .meta {
+            font-size: 9pt;
+            color: #666;
+            margin-top: 4px;
+        }
+
+        /* Footer */
+        .report-footer {
+            margin-top: 32px;
+            padding-top: 12px;
+            border-top: 1px solid #ddd;
+            font-size: 9pt;
+            color: #888;
+            text-align: center;
+        }
+
+        .no-defects {
+            text-align: center;
+            padding: 32px;
+            color: #28a745;
+            font-size: 14pt;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <div class="report-header">
+        <h1>{{ company_name }}</h1>
+        <div class="tagline">{{ company_tagline }}</div>
+        <div class="report-title">🔍 VEHICLE INSPECTION REPORT</div>
+    </div>
+
+    <!-- Vehicle Information -->
+    <div class="section">
+        <div class="section-title">Vehicle Information</div>
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">Make:</span>
+                <span class="info-value">{{ vehicle.make if vehicle else 'N/A' }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Model:</span>
+                <span class="info-value">{{ vehicle.model if vehicle else 'N/A' }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Year:</span>
+                <span class="info-value">{{ vehicle.year if vehicle and vehicle.year else 'N/A' }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Color:</span>
+                <span class="info-value">{{ vehicle.color if vehicle and vehicle.color else 'N/A' }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">License Plate:</span>
+                <span class="info-value">{{ vehicle.license_plate if vehicle and vehicle.license_plate else 'N/A' }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">VIN:</span>
+                <span class="info-value">{{ vehicle.vin if vehicle and vehicle.vin else 'N/A' }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Mileage:</span>
+                <span class="info-value">{{ '{:,}'.format(vehicle.mileage) if vehicle and vehicle.mileage else 'N/A' }} km</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Owner:</span>
+                <span class="info-value">{{ vehicle.owner_name if vehicle and vehicle.owner_name else 'N/A' }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Inspection Details -->
+    <div class="section">
+        <div class="section-title">Inspection Details</div>
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">Inspection ID:</span>
+                <span class="info-value">{{ inspection.id[:12] }}...</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Inspector:</span>
+                <span class="info-value">{{ inspector.name if inspector else 'N/A' }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Date:</span>
+                <span class="info-value">{{ inspection.started_at.strftime('%B %d, %Y') if inspection.started_at else 'N/A' }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Status:</span>
+                <span class="info-value">{{ inspection.status | capitalize }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Severity Summary -->
+    <div class="section">
+        <div class="section-title">Defect Summary</div>
+        {% if total_confirmed > 0 %}
+        <div class="severity-summary">
+            <div class="severity-badge severity-severe">🔴 Severe: {{ severity_counts.severe }}</div>
+            <div class="severity-badge severity-moderate">🟠 Moderate: {{ severity_counts.moderate }}</div>
+            <div class="severity-badge severity-minor">🟡 Minor: {{ severity_counts.minor }}</div>
+        </div>
+        <p><strong>Total Confirmed Defects:</strong> {{ total_confirmed }} &nbsp;|&nbsp; <strong>Rejected:</strong> {{ total_rejected }}</p>
+        {% else %}
+        <div class="no-defects">✅ No defects found — Vehicle passed inspection</div>
+        {% endif %}
+    </div>
+
+    <!-- Defect Table -->
+    {% if defects %}
+    <div class="section">
+        <div class="section-title">Detailed Findings</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Fault Type</th>
+                    <th>Severity</th>
+                    <th>Confidence</th>
+                    <th>Status</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for defect in defects %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ defect.fault_type.replace('-', ' ').title() }}</td>
+                    <td class="severity-cell-{{ defect.severity or 'moderate' }}">
+                        {{ (defect.severity or 'Moderate') | capitalize }}
+                    </td>
+                    <td>{{ '%.0f' | format(defect.confidence * 100) }}%</td>
+                    <td>{{ defect.status | capitalize }}</td>
+                    <td>{{ defect.notes or '—' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <!-- Defect Photos -->
+    {% if defects %}
+    <div class="section" style="page-break-before: auto;">
+        <div class="section-title">Defect Photos</div>
+        <div class="defect-cards">
+            {% for defect in defects %}
+            {% if defect.snapshot_path %}
+            <div class="defect-card">
+                <img src="file:///{{ uploads_base }}/{{ defect.snapshot_path }}" alt="{{ defect.fault_type }}">
+                <div class="card-body">
+                    <div class="fault-type">{{ defect.fault_type.replace('-', ' ').title() }}</div>
+                    <div class="meta">
+                        Severity: <span class="severity-cell-{{ defect.severity or 'moderate' }}">{{ (defect.severity or 'Moderate') | capitalize }}</span>
+                        &nbsp;|&nbsp; Confidence: {{ '%.0f' | format(defect.confidence * 100) }}%
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Inspector Notes -->
+    {% if inspection.notes %}
+    <div class="section">
+        <div class="section-title">Inspector Notes</div>
+        <p>{{ inspection.notes }}</p>
+    </div>
+    {% endif %}
+
+    <!-- Footer -->
+    <div class="report-footer">
+        Report generated by {{ company_name }} on {{ generated_at }}<br>
+        This report is auto-generated and is for informational purposes only.
+    </div>
+
+</body>
+</html>
