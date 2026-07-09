@@ -189,3 +189,43 @@ def advance_phase(
         .first()
     )
     return inspection
+
+
+@router.delete("/{inspection_id}", status_code=204)
+def delete_inspection(
+    inspection_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Delete an inspection.
+    Managers can delete any inspection.
+    Inspectors can only delete their own inspections.
+    """
+    inspection = db.query(Inspection).filter(Inspection.id == inspection_id).first()
+    if not inspection:
+        raise HTTPException(status_code=404, detail="Inspection not found")
+
+    # Check permission: Manager can delete any; Inspector can only delete their own.
+    if current_user.role != "manager" and inspection.inspector_id != current_user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="Forbidden: You do not have permission to delete this inspection"
+        )
+
+    # Delete from database (defects are cascade deleted)
+    db.delete(inspection)
+    db.commit()
+
+    # Clean up snapshots folder on disk
+    import shutil
+    from backend.config import settings
+
+    try:
+        inspection_dir = settings.UPLOADS_DIR / inspection_id
+        if inspection_dir.exists() and inspection_dir.is_dir():
+            shutil.rmtree(inspection_dir, ignore_errors=True)
+    except Exception as e:
+        print(f"[WARNING] Failed to clean up snapshots directory for {inspection_id}: {e}")
+
+    return None

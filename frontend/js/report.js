@@ -200,3 +200,19 @@ async function completeInspection() {
         showToast(`Failed to complete: ${err.message}`, 'error');
     }
 }
+
+async function goBackToReview() {
+    if (!currentInspectionId) return;
+
+    try {
+        await api.patch(`/api/inspections/${currentInspectionId}/phase`, { phase: 3 });
+        showToast('Returning to review phase...', 'info');
+
+        // Show review nav item, hide report nav item
+        document.getElementById('nav-review').style.display = '';
+        document.getElementById('nav-report').style.display = 'none';
+        navigateTo('review');
+    } catch (err) {
+        showToast(`Failed to go back: ${err.message}`, 'error');
+    }
+}

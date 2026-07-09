@@ -1,6 +1,8 @@
 import cv2
 import time
 import threading
+import os
+import numpy as np
 
 
 class VideoStream:
@@ -10,6 +12,16 @@ class VideoStream:
     """
 
     def __init__(self, src=0):
+        if os.getenv("TESTING_MODE") == "true":
+            self.stream = None
+            self.frame = np.zeros((480, 640, 3), dtype=np.uint8)
+            cv2.putText(self.frame, "Mock Video Feed", (150, 240), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0), 2)
+            self.grabbed = True
+            self.stopped = False
+            self.lock = threading.Lock()
+            self.thread = None
+            return
+
         self.stream = cv2.VideoCapture(src)
         if not self.stream.isOpened():
             raise RuntimeError(f"Could not open video source: {src}")
@@ -26,6 +38,8 @@ class VideoStream:
         self.thread = None
 
     def start(self):
+        if os.getenv("TESTING_MODE") == "true":
+            return self
         # Start the thread to read frames from the video stream
         self.thread = threading.Thread(
             target=self.update, name="CameraBackgroundThread", daemon=True
@@ -78,6 +92,8 @@ class VideoStream:
             return False, None
 
     def stop(self):
+        if os.getenv("TESTING_MODE") == "true":
+            return
         # Signal the background thread to exit
         self.stopped = True
         if self.thread is not None:

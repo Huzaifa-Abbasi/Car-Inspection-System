@@ -43,6 +43,11 @@ async def websocket_inspection(websocket: WebSocket, inspection_id: str):
     """
     await websocket.accept()
 
+    # Parse parameters from query string
+    require_vehicle_param = websocket.query_params.get("require_vehicle", "true").lower() == "true"
+    conf_threshold_param = float(websocket.query_params.get("conf_threshold", "0.35"))
+    iou_threshold_param = float(websocket.query_params.get("iou_threshold", "0.30"))
+
     # Validate inspection exists
     db: Session = SessionLocal()
     try:
@@ -57,7 +62,12 @@ async def websocket_inspection(websocket: WebSocket, inspection_id: str):
     # Start the detection service
     detection_svc = None
     try:
-        detection_svc = DetectionService(inspection_id=inspection_id)
+        detection_svc = DetectionService(
+            inspection_id=inspection_id,
+            require_vehicle=require_vehicle_param,
+            conf_threshold=conf_threshold_param,
+            iou_threshold=iou_threshold_param,
+        )
         detection_svc.start()
         _active_sessions[inspection_id] = detection_svc
 
@@ -81,6 +91,38 @@ async def websocket_inspection(websocket: WebSocket, inspection_id: str):
                 elif cmd == "resume":
                     paused = False
                     await websocket.send_json({"type": "status", "message": "Resumed scanning..."})
+                    continue
+                elif cmd == "set_require_vehicle":
+                    val = msg.get("value", True)
+                    detection_svc.require_vehicle = val
+                    if detection_svc._pipeline:
+                        detection_svc._pipeline.require_vehicle = val
+                        if val and detection_svc._pipeline._vehicle_gate is None:
+                            print("[INFO] Enabling vehicle detection gate (yolov8n) dynamically...")
+                            from ultralytics import YOLO
+                            detection_svc._pipeline._vehicle_gate = YOLO("yolov8n.pt")
+                            detection_svc._pipeline._vehicle_conf = 0.30
+                            detection_svc._pipeline._vehicle_cache = False
+                            detection_svc._pipeline._vehicle_check_interval = 3
+                            detection_svc._pipeline._vehicle_frame_counter  = 0
+                        elif not val:
+                            print("[INFO] Disabling vehicle detection gate dynamically...")
+                            detection_svc._pipeline._vehicle_gate = None
+                    await websocket.send_json({"type": "status", "message": f"Vehicle gate: {'ON' if val else 'OFF'}"})
+                    continue
+                elif cmd == "set_conf_threshold":
+                    val = float(msg.get("value", 0.35))
+                    detection_svc.conf_threshold = val
+                    if detection_svc._pipeline and detection_svc._pipeline.detector:
+                        detection_svc._pipeline.detector.conf_threshold = val
+                    await websocket.send_json({"type": "status", "message": f"Conf threshold: {val}"})
+                    continue
+                elif cmd == "set_iou_threshold":
+                    val = float(msg.get("value", 0.30))
+                    detection_svc.iou_threshold = val
+                    if detection_svc._pipeline and detection_svc._pipeline.detector:
+                        detection_svc._pipeline.detector.iou_threshold = val
+                    await websocket.send_json({"type": "status", "message": f"IoU threshold: {val}"})
                     continue
                 elif cmd == "end_scan":
                     await websocket.send_json({"type": "status", "message": "Scan ended"})

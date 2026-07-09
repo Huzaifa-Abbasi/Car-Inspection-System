@@ -33,7 +33,10 @@ LEGEND_WIDTH     = 285
 
 
 def _normalize_class_name(name):
-    return name.strip().lower().replace("_", "-")
+    name = name.strip().lower().replace("_", "-")
+    if name == "car-scratch":
+        return "scratch"
+    return name
 
 
 def _format_fault_label(name):
@@ -54,8 +57,8 @@ class DefectDetector:
     def __init__(
         self,
         model_path=None,
-        conf_threshold=0.20,   # lowered from 0.25 to catch more faults
-        iou_threshold=0.50,    # our post-process NMS threshold
+        conf_threshold=0.05,   # lowered to catch all scratches/dents
+        iou_threshold=0.30,    # our post-process NMS threshold
         device=None,
     ):
         if model_path is None:
@@ -340,7 +343,7 @@ class DefectDetector:
                 raw_detections.append({
                     "box":  clamped,
                     "conf": conf,
-                    "cls":  cls_name,
+                    "cls":  _normalize_class_name(cls_name),
                 })
 
         # Refine each YOLO detection (tighten + optionally split)

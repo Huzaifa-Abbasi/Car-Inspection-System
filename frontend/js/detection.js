@@ -26,7 +26,10 @@ function startDetectionStream() {
 
     // Connect WebSocket
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws/inspect/${currentInspectionId}`;
+    const requireVehicle = document.getElementById('chk-require-vehicle').checked;
+    const confThreshold = document.getElementById('rng-conf-threshold').value;
+    const iouThreshold = document.getElementById('rng-iou-threshold').value;
+    const wsUrl = `${protocol}//${window.location.host}/ws/inspect/${currentInspectionId}?require_vehicle=${requireVehicle}&conf_threshold=${confThreshold}&iou_threshold=${iouThreshold}`;
 
     try {
         ws = new WebSocket(wsUrl);
@@ -210,5 +213,34 @@ async function endScan() {
         } catch (err) {
             showToast(`Failed to advance phase: ${err.message}`, 'error');
         }
+    }
+}
+
+function toggleRequireVehicle(checked) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+            command: 'set_require_vehicle',
+            value: checked
+        }));
+    }
+}
+
+function updateConfThreshold(val) {
+    document.getElementById('lbl-conf-threshold').textContent = val;
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+            command: 'set_conf_threshold',
+            value: parseFloat(val)
+        }));
+    }
+}
+
+function updateIouThreshold(val) {
+    document.getElementById('lbl-iou-threshold').textContent = val;
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+            command: 'set_iou_threshold',
+            value: parseFloat(val)
+        }));
     }
 }

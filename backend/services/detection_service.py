@@ -30,13 +30,17 @@ class DetectionService:
         camera_src: int = 0,
         resize_width: int = 640,
         conf_threshold: float = 0.35,
+        iou_threshold: float = 0.30,
         stability_frames: int = 5,
+        require_vehicle: bool = True,
     ):
         self.inspection_id = inspection_id
         self.camera_src = camera_src
         self.resize_width = resize_width
         self.conf_threshold = conf_threshold
+        self.iou_threshold = iou_threshold
         self.stability_frames = stability_frames
+        self.require_vehicle = require_vehicle
 
         self._pipeline: InspectionPipeline | None = None
         self._last_detections: list = []
@@ -55,7 +59,10 @@ class DetectionService:
             skip_frames=False,
             conf_threshold=self.conf_threshold,
             stability_frames=self.stability_frames,
+            require_vehicle=self.require_vehicle,
         )
+        if self._pipeline and self._pipeline.detector:
+            self._pipeline.detector.iou_threshold = self.iou_threshold
 
     def stop(self):
         """Stop the camera and clean up resources."""
@@ -86,6 +93,12 @@ class DetectionService:
         if w > self.resize_width:
             scale = self.resize_width / float(w)
             frame = cv2.resize(frame, (self.resize_width, int(h * scale)))
+
+        # Vehicle gate — skip if no car visible
+        if not self._pipeline.has_vehicle(frame):
+            self._pipeline.detection_history.append([])
+            self._last_detections = []
+            return frame, []
 
         # Run detection
         raw_results = self._pipeline.detector.detect(frame)
@@ -136,12 +149,21 @@ class DetectionService:
             # Save to database
             db = SessionLocal()
             try:
+                # Dynamically classify default severity based on detection confidence
+                conf = detection["conf"]
+                if conf < 0.55:
+                    severity = "minor"
+                elif conf < 0.75:
+                    severity = "moderate"
+                else:
+                    severity = "severe"
+
                 defect = Defect(
                     id=defect_id,
                     inspection_id=self.inspection_id,
                     fault_type=detection["cls"],
                     confidence=detection["conf"],
-                    severity="moderate",  # default; user adjusts during review
+                    severity=severity,
                     status="detected",
                     bbox_x1=x1,
                     bbox_y1=y1,

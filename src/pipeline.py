@@ -1,13 +1,22 @@
 import cv2
 from collections import deque
+from ultralytics import YOLO
 from src.camera import VideoStream
 from src.detector import DefectDetector
+
+# COCO class IDs for vehicles (used by the pretrained gate model)
+_VEHICLE_COCO_IDS = [2, 5, 7]   # car, bus, truck
 
 
 class InspectionPipeline:
     """
     Wires up the camera stream and the object detection model, handling
     performance optimizations like resizing and frame skipping.
+
+    A **vehicle detection gate** runs a lightweight pretrained YOLOv8n model
+    first.  If no car/truck/bus is visible in the frame, damage detection is
+    skipped entirely — this eliminates false positives on non-car content
+    (faces, walls, furniture) that the damage model would otherwise mislabel.
 
     For live webcam use a ``stability_frames`` filter is applied: a detection
     must appear in the same location across N consecutive inference frames
@@ -22,9 +31,9 @@ class InspectionPipeline:
         model_path=None,
         resize_width=640,
         skip_frames=False,
-        conf_threshold=0.35,   # higher than image-test mode to suppress false
-                               # positives on non-car content in live feeds
+        conf_threshold=0.35,   # must be high for live feed to suppress false positives
         stability_frames=5,    # frames a detection must persist before shown
+        require_vehicle=True,  # set False to disable vehicle gate (for testing)
     ):
         self.stream   = VideoStream(src=camera_src).start()
         self.detector = DefectDetector(
@@ -41,6 +50,50 @@ class InspectionPipeline:
         # Temporal stability state
         self.stability_frames    = stability_frames
         self.detection_history   = deque(maxlen=stability_frames)
+
+        # Vehicle detection gate — lightweight pretrained model (~6 MB,
+        # auto-downloads once via ultralytics).  Only frames that contain a
+        # car/truck/bus are forwarded to the damage detector.
+        self.require_vehicle = require_vehicle
+        if require_vehicle:
+            print("[INFO] Loading vehicle detection gate (yolov8n) ...")
+            self._vehicle_gate = YOLO("yolov8n.pt")
+            self._vehicle_conf = 0.30
+            self._vehicle_cache = False
+            self._vehicle_check_interval = 3
+            self._vehicle_frame_counter  = 0
+            print("[INFO] Vehicle detection gate ready.")
+        else:
+            print("[INFO] Vehicle detection gate DISABLED (testing mode).")
+            self._vehicle_gate = None
+
+    # ------------------------------------------------------------------
+    # Vehicle gate
+    # ------------------------------------------------------------------
+
+    def has_vehicle(self, frame):
+        """
+        Return True if a car, bus, or truck is visible in ``frame``.
+
+        To keep latency low, the check runs only every few frames and the
+        last result is cached in between.  Returns True unconditionally when
+        the gate is disabled (testing mode).
+        """
+        if self._vehicle_gate is None:
+            return True   # gate disabled — let everything through
+
+        self._vehicle_frame_counter += 1
+        if self._vehicle_frame_counter % self._vehicle_check_interval != 1:
+            return self._vehicle_cache
+
+        results = self._vehicle_gate(
+            frame,
+            verbose=False,
+            conf=self._vehicle_conf,
+            classes=_VEHICLE_COCO_IDS,
+        )
+        self._vehicle_cache = len(results[0].boxes) > 0
+        return self._vehicle_cache
 
     # ------------------------------------------------------------------
     # Temporal stability filter
@@ -120,10 +173,17 @@ class InspectionPipeline:
                 annotated_frame = self.detector.draw_results(frame, self.last_results)
                 return True, annotated_frame
 
-        # 3. RUN INFERENCE
+        # 3. VEHICLE GATE — skip damage detection if no car is in frame
+        if not self.has_vehicle(frame):
+            self.detection_history.append([])   # keep stability buffer ticking
+            self.last_results     = []
+            self.last_frame_shape = frame.shape[:2]
+            return True, frame                  # return clean frame
+
+        # 4. RUN INFERENCE
         raw_results = self.detector.detect(frame)
 
-        # 4. TEMPORAL STABILITY FILTER
+        # 5. TEMPORAL STABILITY FILTER
         #    Only show detections that were present in all recent frames.
         #    This kills false positives on moving non-car content.
         stable_results = self._stable_detections(raw_results)
@@ -131,7 +191,7 @@ class InspectionPipeline:
         self.last_results    = stable_results
         self.last_frame_shape = frame.shape[:2]
 
-        # 5. DRAW BOUNDING BOXES
+        # 6. DRAW BOUNDING BOXES
         annotated_frame = self.detector.draw_results(frame, stable_results)
         if annotated_frame is None:
             return False, None

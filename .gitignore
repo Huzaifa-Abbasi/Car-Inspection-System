@@ -6,6 +6,12 @@ __pycache__
 *.pt
 path/
 .continue
+tests/
+test-results
+playwright.config.ts
+node_modules/
+yolov8n.pt
+
 # C extensions
 *.so
 
@@ -187,3 +193,18 @@ cython_debug/
 data/
 uploads/
 reports/
+.agent/
+docs/
+package-lock.json
+package.json
+.obsidian
+.idea
+node_modules/
+frontend/node_modules/
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/

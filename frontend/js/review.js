@@ -20,7 +20,9 @@ async function loadReview() {
 function renderReviewCards() {
     const grid = document.getElementById('defect-grid');
 
-    if (!reviewDefects || reviewDefects.length === 0) {
+    const visibleDefects = reviewDefects.filter(d => d.status !== 'rejected');
+
+    if (!visibleDefects || visibleDefects.length === 0) {
         grid.innerHTML = `
             <div style="grid-column: 1/-1; text-align:center; padding:60px; color:var(--text-muted);">
                 <p>No defects detected during scanning.</p>
@@ -30,7 +32,7 @@ function renderReviewCards() {
         return;
     }
 
-    grid.innerHTML = reviewDefects.map((defect, idx) => {
+    grid.innerHTML = visibleDefects.map((defect, idx) => {
         const imgSrc = defect.snapshot_path
             ? `/uploads/${defect.snapshot_path}`
             : '';
@@ -107,5 +109,22 @@ async function updateDefectStatus(defectId, status) {
         updateReviewSummary();
     } catch (err) {
         showToast('Failed to update status', 'error');
+    }
+}
+
+async function goBackToScan() {
+    if (!currentInspectionId) return;
+
+    try {
+        await api.patch(`/api/inspections/${currentInspectionId}/phase`, { phase: 2 });
+        showToast('Returning to scanning phase...', 'info');
+
+        // Show live scan nav item, hide review nav item
+        document.getElementById('nav-detection').style.display = '';
+        document.getElementById('nav-review').style.display = 'none';
+        navigateTo('detection');
+        startDetectionStream();
+    } catch (err) {
+        showToast(`Failed to go back: ${err.message}`, 'error');
     }
 }
