@@ -143,6 +143,43 @@
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                         <span>Live Scan</span>
                     </li>
+                    <!-- Camera Source Manager Panel (shifted to left sidebar nav) -->
+                    <div id="sidebar-camera-panel" class="camera-manager-panel" style="display: none; padding: 14px 20px; background: rgba(255,255,255,0.02); border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); flex-direction: column; gap: 10px; margin: 8px 0;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--accent-cyan); flex-shrink: 0;"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                            <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); letter-spacing: 0.5px;">CAMERA SOURCE</span>
+                        </div>
+                        <select id="sel-camera-source" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary); padding: 7px 10px; border-radius: var(--radius-sm); font-size: 0.8rem; outline: none;" onchange="onCameraSourceChange(this.value)">
+                            <!-- Populated dynamically -->
+                        </select>
+                        <div style="display: flex; gap: 6px;">
+                            <button id="btn-add-device-trigger" class="btn btn-ghost" onclick="toggleAddDeviceForm(true)" style="padding: 5px 10px; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 4px; flex: 1;">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                Add Stream
+                            </button>
+                        </div>
+
+                        <!-- Add Device Form (hidden by default) -->
+                        <div id="add-device-form" style="display: none; flex-direction: column; gap: 8px; padding: 10px; background: rgba(0,0,0,0.15); border-radius: var(--radius-md); border: 1px dashed var(--border-color);">
+                            <div class="form-group" style="gap: 4px;">
+                                <label style="font-size: 0.7rem; color: var(--text-muted); font-weight: 600;">Device Label</label>
+                                <input type="text" id="new-device-label" placeholder="e.g. DroidCam Phone" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary); padding: 5px 8px; border-radius: var(--radius-sm); font-size: 0.78rem;">
+                            </div>
+                            <div class="form-group" style="gap: 4px;">
+                                <label style="font-size: 0.7rem; color: var(--text-muted); font-weight: 600;">Index or URL</label>
+                                <input type="text" id="new-device-value" placeholder="e.g. 0 or http://192.168.1.50:4747/video" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary); padding: 5px 8px; border-radius: var(--radius-sm); font-size: 0.78rem;">
+                            </div>
+                            <div style="display: flex; gap: 6px;">
+                                <button class="btn btn-primary" onclick="addCameraDevice()" style="padding: 5px 12px; font-size: 0.75rem; height: 28px;">Save</button>
+                                <button class="btn btn-ghost" onclick="toggleAddDeviceForm(false)" style="padding: 5px 8px; font-size: 0.75rem; height: 28px;">Cancel</button>
+                            </div>
+                        </div>
+
+                        <!-- Saved Custom Devices list -->
+                        <div id="custom-devices-list" style="display: flex; flex-wrap: wrap; gap: 6px; font-size: 0.75rem; color: var(--text-secondary);">
+                            <!-- Rendered dynamically -->
+                        </div>
+                    </div>
                     <li class="nav-item" data-page="review" id="nav-review" style="display:none;" onclick="navigateTo('review')">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
                         <span>Review</span>
@@ -375,6 +412,13 @@
                                     </button>
                                     <div class="toggle-container">
                                         <label class="switch">
+                                            <input type="checkbox" id="chk-use-browser-camera" onchange="toggleBrowserCamera(this.checked)">
+                                            <span class="slider"></span>
+                                        </label>
+                                        <span class="toggle-label">Use Browser Camera</span>
+                                    </div>
+                                    <div class="toggle-container">
+                                        <label class="switch">
                                             <input type="checkbox" id="chk-require-vehicle" checked onchange="toggleRequireVehicle(this.checked)">
                                             <span class="slider"></span>
                                         </label>
@@ -382,8 +426,9 @@
                                     </div>
                                 </div>
                             </div>
- 
+
                             <div class="detection-sidebar">
+
                                 <div class="detection-header">
                                     <h3>Detected Faults</h3>
                                     <span class="defect-count" id="defect-count">0 found</span>
