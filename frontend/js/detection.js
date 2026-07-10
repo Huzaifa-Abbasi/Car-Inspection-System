@@ -7,6 +7,238 @@ let isPaused = false;
 let detectedDefects = [];
 let videoCanvas = null;
 let videoCtx = null;
+let localStream = null;
+let captureInterval = null;
+
+function toggleBrowserCamera(checked) {
+    const panel = document.querySelector('.camera-manager-panel');
+    if (panel) {
+        panel.style.display = checked ? 'none' : 'flex';
+    }
+}
+
+const defaultDevices = [
+    { label: 'Default Camera (Webcam)', value: '0', _isDefault: true },
+    { label: 'OBS/DroidCam Virtual Camera', value: '1', _isDefault: true }
+];
+
+function toggleAddDeviceForm(show) {
+    const form = document.getElementById('add-device-form');
+    if (form) {
+        form.style.display = show ? 'grid' : 'none';
+    }
+    if (show) {
+        document.getElementById('new-device-label').value = '';
+        document.getElementById('new-device-value').value = '';
+    }
+}
+
+function loadCameraDevices() {
+    let devicesRaw = localStorage.getItem('car_inspection_cameras');
+    let customDevices = [];
+    if (devicesRaw) {
+        try {
+            customDevices = JSON.parse(devicesRaw);
+            // Migrate: filter out default devices from custom device list
+            customDevices = customDevices.filter(d => d.value !== '0' && d.value !== '1');
+        } catch (e) {
+            console.error('[Camera] Error parsing custom devices:', e);
+        }
+    }
+
+    let deviceList = [...defaultDevices, ...customDevices];
+    
+    // Normalize comparison of camera values / URLs to check for duplicates
+    const hasUrlOrValue = (val) => {
+        return deviceList.some(d => {
+            const v1 = d.value.replace(/\/+$/, '').toLowerCase();
+            const v2 = val.replace(/\/+$/, '').toLowerCase();
+            return v1 === v2 || v1 + '/video' === v2 || v1 === v2 + '/video';
+        });
+    };
+
+    // Populate select dropdown
+    const populateSelect = () => {
+        const selectEl = document.getElementById('sel-camera-source');
+        if (!selectEl) return;
+        const prevValue = selectEl.value;
+
+        if (deviceList.length === 0) {
+            selectEl.innerHTML = '<option value="" disabled selected>No cameras found — add an IP stream below</option>';
+            return;
+        }
+
+        selectEl.innerHTML = deviceList.map(d => `<option value="${d.value}">${d.label}</option>`).join('');
+        if (prevValue && deviceList.some(d => d.value === prevValue)) {
+            selectEl.value = prevValue;
+        } else {
+            selectEl.value = deviceList[0].value;
+        }
+    };
+
+    // Populate custom devices list with delete buttons
+    const populateCustomList = () => {
+        const customListEl = document.getElementById('custom-devices-list');
+        if (!customListEl) return;
+        
+        // Only show actual user-added custom streams in the Saved Devices list (exclude defaults and auto-detected)
+        const savedCustomDevices = deviceList.filter(d => !d._isDefault && !d._autoDetected);
+        
+        if (savedCustomDevices.length === 0) {
+            customListEl.innerHTML = '';
+        } else {
+            customListEl.innerHTML = '<span style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); width: 100%; margin-top: 6px;">Saved Devices:</span>' + 
+            savedCustomDevices.map(d => `
+                <span class="custom-device-tag" style="display: inline-flex; align-items: center; gap: 6px; background: rgba(0, 229, 255, 0.08); border: 1px solid var(--accent-cyan-glow); padding: 4px 10px; border-radius: 12px; color: var(--accent-cyan); font-size: 0.75rem;">
+                    ${d.label}
+                    <span onclick="removeCameraDevice('${d.value}')" style="cursor: pointer; font-weight: bold; color: var(--accent-red); margin-left: 4px; font-size: 0.95rem; line-height: 1;" title="Remove device">&times;</span>
+                </span>
+            `).join('');
+        }
+    };
+
+    populateSelect();
+    populateCustomList();
+
+    // Asynchronously detect local cameras and DroidCam streams
+    fetch('/api/cameras/detect')
+        .then(res => res.json())
+        .then(data => {
+            let updated = false;
+
+            // Add detected local cameras
+            if (data.cameras && data.cameras.length > 0) {
+                data.cameras.forEach(idx => {
+                    const idxStr = String(idx);
+                    if (!hasUrlOrValue(idxStr)) {
+                        deviceList.push({ label: `Local Camera ${idx}`, value: idxStr, _autoDetected: true });
+                        updated = true;
+                    }
+                });
+            }
+
+            // Add discovered DroidCam streams
+            if (data.streams && data.streams.length > 0) {
+                data.streams.forEach(stream => {
+                    if (!hasUrlOrValue(stream.url)) {
+                        deviceList.push({ label: stream.label, value: stream.url, _autoDetected: true });
+                        updated = true;
+                    }
+                });
+            }
+
+            if (updated) {
+                populateSelect();
+                populateCustomList();
+            }
+        })
+        .catch(err => console.error('[Camera Detection] Async scan error:', err));
+}
+
+function addCameraDevice() {
+    const label = document.getElementById('new-device-label').value.trim();
+    const value = document.getElementById('new-device-value').value.trim();
+
+    if (!label || !value) {
+        showToast('Please fill out both fields', 'error');
+        return;
+    }
+
+    let devicesRaw = localStorage.getItem('car_inspection_cameras');
+    let customDevices = [];
+    if (devicesRaw) {
+        try {
+            customDevices = JSON.parse(devicesRaw).filter(d => d.value !== '0' && d.value !== '1');
+        } catch (e) {}
+    }
+
+    // Check duplicate value (against defaults + current custom devices)
+    const currentList = [...defaultDevices, ...customDevices];
+    const isDuplicate = currentList.some(d => {
+        const v1 = d.value.replace(/\/+$/, '').toLowerCase();
+        const v2 = value.replace(/\/+$/, '').toLowerCase();
+        return v1 === v2 || v1 + '/video' === v2 || v1 === v2 + '/video';
+    });
+
+    if (isDuplicate) {
+        showToast('Device source or URL already exists', 'error');
+        return;
+    }
+
+    customDevices.push({ label, value });
+    localStorage.setItem('car_inspection_cameras', JSON.stringify(customDevices));
+    showToast(`Device "${label}" added successfully`, 'success');
+
+    loadCameraDevices();
+    toggleAddDeviceForm(false);
+
+    // Select the newly added device
+    const selectEl = document.getElementById('sel-camera-source');
+    if (selectEl) {
+        selectEl.value = value;
+        onCameraSourceChange(value);
+    }
+}
+
+function removeCameraDevice(value) {
+    let devicesRaw = localStorage.getItem('car_inspection_cameras');
+    if (!devicesRaw) return;
+
+    try {
+        let customDevices = JSON.parse(devicesRaw);
+        customDevices = customDevices.filter(d => d.value !== value);
+        localStorage.setItem('car_inspection_cameras', JSON.stringify(customDevices));
+        showToast('Device removed', 'info');
+    } catch (e) {
+        console.error('[Camera] Error removing device:', e);
+    }
+
+    // If the removed device was selected, reset to '0'
+    const selectEl = document.getElementById('sel-camera-source');
+    if (selectEl && selectEl.value === value) {
+        selectEl.value = '0';
+    }
+
+    loadCameraDevices();
+}
+
+function onCameraSourceChange(value) {
+    console.log('[Camera] Source selected:', value);
+    // If a scan is currently active, restart the stream with the new camera
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        console.log('[Camera] Live-switching camera to:', value);
+        stopDetectionStream();
+        // Small delay to allow cleanup before reconnecting
+        setTimeout(() => {
+            startDetectionStream();
+        }, 300);
+    }
+}
+
+function stopBrowserCamera() {
+    if (captureInterval) {
+        clearInterval(captureInterval);
+        captureInterval = null;
+    }
+    if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+        localStream = null;
+    }
+}
+
+function stopDetectionStream() {
+    stopBrowserCamera();
+    if (ws) {
+        try {
+            if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+                ws.close();
+            }
+        } catch (e) {
+            console.error('[WS] Error closing socket:', e);
+        }
+        ws = null;
+    }
+}
 
 function startDetectionStream() {
     if (!currentInspectionId) {
@@ -24,12 +256,20 @@ function startDetectionStream() {
     updateDetectionList();
     updatePauseButton();
 
+    // Setup camera manager
+    loadCameraDevices();
+
     // Connect WebSocket
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const requireVehicle = document.getElementById('chk-require-vehicle').checked;
     const confThreshold = document.getElementById('rng-conf-threshold').value;
     const iouThreshold = document.getElementById('rng-iou-threshold').value;
-    const wsUrl = `${protocol}//${window.location.host}/ws/inspect/${currentInspectionId}?require_vehicle=${requireVehicle}&conf_threshold=${confThreshold}&iou_threshold=${iouThreshold}`;
+    const useBrowserCamera = document.getElementById('chk-use-browser-camera').checked;
+    
+    const selectEl = document.getElementById('sel-camera-source');
+    const cameraSrc = selectEl ? selectEl.value : '0';
+
+    const wsUrl = `${protocol}//${window.location.host}/ws/inspect/${currentInspectionId}?require_vehicle=${requireVehicle}&conf_threshold=${confThreshold}&iou_threshold=${iouThreshold}&use_client_camera=${useBrowserCamera}&camera_src=${encodeURIComponent(cameraSrc)}`;
 
     try {
         ws = new WebSocket(wsUrl);
@@ -38,9 +278,60 @@ function startDetectionStream() {
         return;
     }
 
-    ws.onopen = () => {
+    ws.onopen = async () => {
         console.log('[WS] Connected to inspection stream');
         showToast('Camera connected. Scanning...', 'success');
+
+        if (useBrowserCamera) {
+            try {
+                // Initialize browser camera stream
+                localStream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: 640, height: 480 }
+                });
+
+                // Create a temporary video element to play the stream so we can draw it on canvas
+                const videoEl = document.createElement('video');
+                videoEl.srcObject = localStream;
+                videoEl.autoplay = true;
+                videoEl.playsInline = true;
+
+                // Wait for video metadata to load so we know its size
+                await new Promise((resolve) => {
+                    videoEl.onloadedmetadata = () => {
+                        resolve();
+                    };
+                });
+
+                // Create offscreen canvas for capturing frames
+                const offscreenCanvas = document.createElement('canvas');
+                offscreenCanvas.width = 640;
+                offscreenCanvas.height = 480;
+                const offscreenCtx = offscreenCanvas.getContext('2d');
+
+                // Start capture interval (~100ms)
+                captureInterval = setInterval(() => {
+                    if (isPaused) return;
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                        // Draw current frame to offscreen canvas
+                        offscreenCtx.drawImage(videoEl, 0, 0, offscreenCanvas.width, offscreenCanvas.height);
+                        
+                        // Convert to base64 JPEG
+                        const dataUrl = offscreenCanvas.toDataURL('image/jpeg', 0.75);
+                        
+                        // Send through WebSocket
+                        ws.send(JSON.stringify({
+                            type: 'frame',
+                            data: dataUrl
+                        }));
+                    }
+                }, 100);
+
+            } catch (err) {
+                console.error('[Browser Camera] Error initializing:', err);
+                showToast('Failed to access browser camera: ' + err.message, 'error');
+                stopDetectionStream();
+            }
+        }
     };
 
     ws.onmessage = (event) => {
@@ -59,6 +350,7 @@ function startDetectionStream() {
 
     ws.onclose = () => {
         console.log('[WS] Disconnected');
+        stopBrowserCamera();
     };
 }
 
@@ -196,10 +488,13 @@ function updatePauseButton() {
 async function endScan() {
     // Send end command via WebSocket
     if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ command: 'end_scan' }));
-        ws.close();
-        ws = null;
+        try {
+            ws.send(JSON.stringify({ command: 'end_scan' }));
+        } catch (e) {
+            console.error('[WS] Error sending end_scan:', e);
+        }
     }
+    stopDetectionStream();
 
     // Advance to review phase
     if (currentInspectionId) {
