@@ -20,6 +20,12 @@ const pageTitles = {
  * Navigate to a page.
  */
 function navigateTo(page) {
+    if (page !== 'detection') {
+        if (typeof stopDetectionStream === 'function') {
+            stopDetectionStream();
+        }
+    }
+
     currentPage = page;
 
     // Hide all pages, show target
@@ -31,6 +37,12 @@ function navigateTo(page) {
     document.querySelectorAll('.nav-item').forEach(item => {
         item.classList.toggle('active', item.dataset.page === page);
     });
+
+    // Show/hide sidebar camera panel based on page
+    const sidebarCameraPanel = document.getElementById('sidebar-camera-panel');
+    if (sidebarCameraPanel) {
+        sidebarCameraPanel.style.display = (page === 'detection') ? 'flex' : 'none';
+    }
 
     // Update page title
     document.getElementById('page-title').textContent = pageTitles[page] || page;
@@ -48,6 +60,11 @@ function navigateTo(page) {
             break;
         case 'review':
             loadReview();
+            break;
+        case 'detection':
+            if (typeof loadCameraDevices === 'function') {
+                loadCameraDevices();
+            }
             break;
     }
 }
