@@ -5,9 +5,11 @@ Manages the camera + inference lifecycle for a single inspection session.
 """
 
 import uuid
+import base64
 from pathlib import Path
 
 import cv2
+import numpy as np
 
 from backend.config import settings
 from backend.database import SessionLocal
@@ -27,7 +29,7 @@ class DetectionService:
     def __init__(
         self,
         inspection_id: str,
-        camera_src: int = 0,
+        camera_src: int | str | None = 0,
         resize_width: int = 640,
         conf_threshold: float = 0.35,
         iou_threshold: float = 0.30,
@@ -86,6 +88,50 @@ class DetectionService:
         # We'll run detection separately to get both.
         grabbed, frame = self._pipeline.stream.read()
         if not grabbed or frame is None:
+            return None, []
+
+        # Resize if needed (same logic as pipeline)
+        h, w = frame.shape[:2]
+        if w > self.resize_width:
+            scale = self.resize_width / float(w)
+            frame = cv2.resize(frame, (self.resize_width, int(h * scale)))
+
+        # Vehicle gate — skip if no car visible
+        if not self._pipeline.has_vehicle(frame):
+            self._pipeline.detection_history.append([])
+            self._last_detections = []
+            return frame, []
+
+        # Run detection
+        raw_results = self._pipeline.detector.detect(frame)
+        stable_results = self._pipeline._stable_detections(raw_results)
+        self._last_detections = stable_results
+
+        # Draw results on frame
+        annotated = self._pipeline.detector.draw_results(frame, stable_results)
+
+        return annotated, stable_results
+
+    def process_frame(self, raw_frame_bytes) -> tuple:
+        """
+        Decode raw/base64 frame bytes, process them using the ML pipeline,
+        and return the annotated frame and list of stable detections.
+        """
+        if not self._pipeline:
+            return None, []
+
+        try:
+            if isinstance(raw_frame_bytes, str):
+                if "," in raw_frame_bytes:
+                    raw_frame_bytes = raw_frame_bytes.split(",")[1]
+                raw_frame_bytes = base64.b64decode(raw_frame_bytes)
+
+            nparr = np.frombuffer(raw_frame_bytes, np.uint8)
+            frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+            if frame is None:
+                return None, []
+        except Exception as e:
+            print(f"[ERROR] Failed to decode frame: {e}")
             return None, []
 
         # Resize if needed (same logic as pipeline)
