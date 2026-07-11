@@ -161,6 +161,8 @@ async function sendReport() {
     const clientEmail = document.getElementById('send-client-email').value.trim();
     const managerEmail = document.getElementById('send-manager-email').value.trim();
     const note = document.getElementById('send-note').value.trim();
+    const senderEmail = document.getElementById('send-sender-email').value.trim();
+    const senderPassword = document.getElementById('send-sender-password').value.trim();
 
     if (!clientEmail && !managerEmail) {
         showToast('Please enter at least one email address', 'error');
@@ -169,12 +171,19 @@ async function sendReport() {
     }
 
     try {
-        await api.post(`/api/reports/${currentInspectionId}/send`, {
+        const response = await api.post(`/api/reports/${currentInspectionId}/send`, {
             client_email: clientEmail || null,
             manager_email: managerEmail || null,
             note: note || null,
+            sender_email: senderEmail || null,
+            sender_password: senderPassword || null,
         });
-        showToast('Report sent successfully!', 'success');
+        if (response && response.simulated) {
+            showToast('SMTP not configured. Saved simulated email locally!', 'info');
+            console.log(response.message);
+        } else {
+            showToast('Report sent successfully!', 'success');
+        }
     } catch (err) {
         showToast(`Failed to send: ${err.message}`, 'error');
     } finally {
