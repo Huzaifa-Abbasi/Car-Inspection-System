@@ -118,12 +118,20 @@ async def send_report(
         raise HTTPException(status_code=400, detail="No email recipients specified")
 
     try:
-        await report_svc.send_email(
+        result = await report_svc.send_email(
             recipients=recipients,
             inspection=inspection,
             pdf_path=pdf_path,
             note=body.note,
+            sender_email=body.sender_email,
+            sender_password=body.sender_password,
         )
-        return {"message": f"Report sent to {', '.join(recipients)}"}
+        if result.get("method") == "simulated":
+            return {
+                "message": f"SMTP not configured. Report simulation saved to {result.get('saved_path')}",
+                "simulated": True,
+                "saved_path": result.get("saved_path"),
+            }
+        return {"message": f"Report sent to {', '.join(recipients)}", "simulated": False}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to send email: {str(e)}")
