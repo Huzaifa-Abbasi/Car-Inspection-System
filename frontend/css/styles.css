@@ -1260,6 +1260,66 @@ a:hover { opacity: 0.8; }
     margin-bottom: 16px;
 }
 
+/* SMTP / Gmail Settings dropdown */
+.smtp-config-details {
+    margin-top: 16px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    background: rgba(255, 255, 255, 0.01);
+    overflow: hidden;
+    transition: border-color var(--transition-fast);
+}
+
+.smtp-config-details[open] {
+    border-color: rgba(0, 242, 254, 0.3);
+}
+
+.smtp-config-details summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    user-select: none;
+    list-style: none; /* Hide default marker */
+}
+
+.smtp-config-details summary::-webkit-details-marker {
+    display: none; /* Hide default marker on WebKit */
+}
+
+.smtp-config-details summary:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.smtp-config-details .details-chevron {
+    transition: transform var(--transition-fast);
+    color: var(--text-muted);
+}
+
+.smtp-config-details[open] summary .details-chevron {
+    transform: rotate(180deg);
+    color: var(--accent-cyan);
+}
+
+.smtp-config-content {
+    padding: 12px 14px 16px 14px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.smtp-config-content .help-text {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    line-height: 1.3;
+}
+
 /* ══════════════════════════════════════════════════════════════════════
    HISTORY
    ══════════════════════════════════════════════════════════════════════ */
