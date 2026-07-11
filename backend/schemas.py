@@ -149,3 +149,5 @@ class ReportSendRequest(BaseModel):
     client_email: Optional[str] = None
     manager_email: Optional[str] = None
     note: Optional[str] = None
+    sender_email: Optional[str] = None
+    sender_password: Optional[str] = None
