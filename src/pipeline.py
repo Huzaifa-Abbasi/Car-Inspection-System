@@ -57,7 +57,13 @@ class InspectionPipeline:
         self.require_vehicle = require_vehicle
         if require_vehicle:
             print("[INFO] Loading vehicle detection gate (yolov8n) ...")
-            self._vehicle_gate = YOLO("yolov8n.pt")
+            import sys
+            from pathlib import Path
+            if getattr(sys, "frozen", False):
+                yolov8n_path = Path(sys._MEIPASS) / "yolov8n.pt"
+            else:
+                yolov8n_path = Path(__file__).resolve().parent.parent / "yolov8n.pt"
+            self._vehicle_gate = YOLO(str(yolov8n_path))
             self._vehicle_conf = 0.30
             self._vehicle_cache = False
             self._vehicle_check_interval = 3

@@ -6,9 +6,33 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Load .env from project root
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-load_dotenv(PROJECT_ROOT / ".env")
+import sys
+
+# Check if running in a PyInstaller bundle
+IS_FROZEN = getattr(sys, "frozen", False)
+
+if IS_FROZEN:
+    # PyInstaller extracts resources to sys._MEIPASS
+    PROJECT_ROOT = Path(sys._MEIPASS)
+    EXE_DIR = Path(sys.executable).resolve().parent
+    # Load .env from beside the executable (if it exists)
+    load_dotenv(EXE_DIR / ".env")
+    
+    # Writeable folders next to the executable
+    DATA_DIR = EXE_DIR / "data"
+    UPLOADS_DIR = EXE_DIR / "uploads" / "inspections"
+    REPORTS_DIR = EXE_DIR / "reports"
+else:
+    PROJECT_ROOT = Path(__file__).resolve().parent.parent
+    load_dotenv(PROJECT_ROOT / ".env")
+    
+    # Writeable folders relative to project root
+    DATA_DIR = PROJECT_ROOT / "data"
+    UPLOADS_DIR = PROJECT_ROOT / "uploads" / "inspections"
+    REPORTS_DIR = PROJECT_ROOT / "reports"
+
+FRONTEND_DIR = PROJECT_ROOT / "frontend"
+TEMPLATES_DIR = PROJECT_ROOT / "backend" / "templates"
 
 
 class Settings:
@@ -16,11 +40,11 @@ class Settings:
 
     # Paths
     PROJECT_ROOT: Path = PROJECT_ROOT
-    DATA_DIR: Path = PROJECT_ROOT / "data"
-    UPLOADS_DIR: Path = PROJECT_ROOT / "uploads" / "inspections"
-    REPORTS_DIR: Path = PROJECT_ROOT / "reports"
-    FRONTEND_DIR: Path = PROJECT_ROOT / "frontend"
-    TEMPLATES_DIR: Path = Path(__file__).resolve().parent / "templates"
+    DATA_DIR: Path = DATA_DIR
+    UPLOADS_DIR: Path = UPLOADS_DIR
+    REPORTS_DIR: Path = REPORTS_DIR
+    FRONTEND_DIR: Path = FRONTEND_DIR
+    TEMPLATES_DIR: Path = TEMPLATES_DIR
 
     # Database
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./data/car_inspection.db")

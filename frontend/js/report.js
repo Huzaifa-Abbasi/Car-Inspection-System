@@ -56,138 +56,179 @@ async function loadReportPreview() {
     if (!currentInspectionId) return;
 
     const preview = document.getElementById('report-preview');
+    const token = api.getToken();
 
     try {
-        const insp = await api.get(`/api/inspections/${currentInspectionId}`);
-        const defects = (insp.defects || []).filter(d => d.status !== 'rejected');
-        const vehicle = insp.vehicle || {};
-        const inspector = insp.inspector || {};
+        const url = `/api/reports/${currentInspectionId}/html?token=${token}`;
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const htmlText = await resp.text();
 
-        const severityCounts = { severe: 0, moderate: 0, minor: 0 };
-        defects.forEach(d => {
-            if (d.severity && severityCounts[d.severity] !== undefined) {
-                severityCounts[d.severity]++;
-            }
-        });
+        const iframe = document.createElement('iframe');
+        iframe.style.width = '100%';
+        iframe.style.minHeight = '750px';
+        iframe.style.border = 'none';
+        iframe.style.background = '#ffffff';
+        iframe.style.borderRadius = '8px';
+        iframe.style.boxShadow = '0 4px 16px rgba(0,0,0,0.1)';
 
-        preview.innerHTML = `
-            <div style="font-family:'Inter',sans-serif; color:#1a1a2e;">
-                <div style="background:linear-gradient(135deg,#0a0a1a,#1a1a3e); color:white; padding:24px 32px; border-radius:8px; margin-bottom:24px;">
-                    <h1 style="font-size:22pt; color:#00E5FF; margin:0;">AutoScan Pro</h1>
-                    <p style="color:#aab; font-size:10pt; margin:4px 0 12px;">Professional Vehicle Inspection System</p>
-                    <p style="font-size:14pt; font-weight:600; margin:0;">🔍 VEHICLE INSPECTION REPORT</p>
-                </div>
+        preview.innerHTML = '';
+        preview.appendChild(iframe);
 
-                <h3 style="border-bottom:2px solid #00E5FF; padding-bottom:4px; margin-bottom:12px;">Vehicle Information</h3>
-                <table style="width:100%; margin-bottom:20px; font-size:10pt;">
-                    <tr><td style="font-weight:600; color:#555; width:140px;">Make:</td><td>${vehicle.make || 'N/A'}</td>
-                        <td style="font-weight:600; color:#555; width:140px;">Model:</td><td>${vehicle.model || 'N/A'}</td></tr>
-                    <tr><td style="font-weight:600; color:#555;">Year:</td><td>${vehicle.year || 'N/A'}</td>
-                        <td style="font-weight:600; color:#555;">Color:</td><td>${vehicle.color || 'N/A'}</td></tr>
-                    <tr><td style="font-weight:600; color:#555;">License Plate:</td><td>${vehicle.license_plate || 'N/A'}</td>
-                        <td style="font-weight:600; color:#555;">VIN:</td><td>${vehicle.vin || 'N/A'}</td></tr>
-                </table>
+        const iframeDoc = iframe.contentWindow.document;
+        iframeDoc.open();
+        iframeDoc.write(htmlText);
+        iframeDoc.close();
 
-                <h3 style="border-bottom:2px solid #00E5FF; padding-bottom:4px; margin-bottom:12px;">Inspection Details</h3>
-                <table style="width:100%; margin-bottom:20px; font-size:10pt;">
-                    <tr><td style="font-weight:600; color:#555; width:140px;">Inspector:</td><td>${inspector.name || 'N/A'}</td>
-                        <td style="font-weight:600; color:#555; width:140px;">Date:</td><td>${formatDate(insp.started_at)}</td></tr>
-                    <tr><td style="font-weight:600; color:#555;">Status:</td><td>${insp.status || 'N/A'}</td>
-                        <td style="font-weight:600; color:#555;">Owner:</td><td>${vehicle.owner_name || 'N/A'}</td></tr>
-                </table>
+        // Adjust iframe height dynamically to fit content
+        const updateHeight = () => {
+            try {
+                if (iframe.contentWindow && iframe.contentWindow.document.body) {
+                    const scrollHeight = iframe.contentWindow.document.body.scrollHeight;
+                    if (scrollHeight > 200) {
+                        iframe.style.height = (scrollHeight + 40) + 'px';
+                    }
+                }
+            } catch (e) {}
+        };
 
-                <h3 style="border-bottom:2px solid #00E5FF; padding-bottom:4px; margin-bottom:12px;">Defect Summary</h3>
-                ${defects.length > 0 ? `
-                    <div style="display:flex; gap:12px; margin:12px 0;">
-                        <span style="background:#dc3545; color:white; padding:6px 16px; border-radius:6px; font-weight:700;">🔴 Severe: ${severityCounts.severe}</span>
-                        <span style="background:#ff8c00; color:white; padding:6px 16px; border-radius:6px; font-weight:700;">🟠 Moderate: ${severityCounts.moderate}</span>
-                        <span style="background:#ffc107; color:#333; padding:6px 16px; border-radius:6px; font-weight:700;">🟡 Minor: ${severityCounts.minor}</span>
-                    </div>
-                    <p><strong>Total Confirmed Defects:</strong> ${defects.length}</p>
+        iframe.onload = updateHeight;
+        setTimeout(updateHeight, 300);
+        setTimeout(updateHeight, 1000);
 
-                    <table style="width:100%; border-collapse:collapse; margin-top:12px;">
-                        <thead>
-                            <tr style="background:#1a1a3e; color:white;">
-                                <th style="padding:8px 12px; text-align:left;">#</th>
-                                <th style="padding:8px 12px; text-align:left;">Fault Type</th>
-                                <th style="padding:8px 12px; text-align:left;">Severity</th>
-                                <th style="padding:8px 12px; text-align:left;">Confidence</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${defects.map((d, i) => `
-                                <tr style="border-bottom:1px solid #e0e0e0;${i % 2 === 0 ? '' : 'background:#f8f9fa;'}">
-                                    <td style="padding:8px 12px;">${i + 1}</td>
-                                    <td style="padding:8px 12px;">${formatFaultType(d.fault_type)}</td>
-                                    <td style="padding:8px 12px; font-weight:700; color:${d.severity === 'severe' ? '#dc3545' : d.severity === 'moderate' ? '#ff8c00' : '#c8a000'};">${(d.severity || 'Moderate').charAt(0).toUpperCase() + (d.severity || 'moderate').slice(1)}</td>
-                                    <td style="padding:8px 12px;">${Math.round(d.confidence * 100)}%</td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                ` : `
-                    <div style="text-align:center; padding:32px; color:#28a745; font-size:14pt; font-weight:600;">
-                        ✅ No defects found — Vehicle passed inspection
-                    </div>
-                `}
-
-                ${insp.notes ? `
-                    <h3 style="border-bottom:2px solid #00E5FF; padding-bottom:4px; margin:20px 0 12px;">Inspector Notes</h3>
-                    <p>${insp.notes}</p>
-                ` : ''}
-
-                <div style="margin-top:32px; padding-top:12px; border-top:1px solid #ddd; font-size:9pt; color:#888; text-align:center;">
-                    Report generated by AutoScan Pro on ${new Date().toLocaleDateString()}
-                </div>
-            </div>
-        `;
     } catch (err) {
-        preview.innerHTML = `<div class="report-loading"><p>Failed to load report preview.</p></div>`;
+        console.error('Failed to load report preview:', err);
+        preview.innerHTML = `<div class="report-loading"><p style="color:#FF1744;">Failed to load report preview: ${err.message}</p></div>`;
     }
 }
 
-function downloadReport() {
-    if (!currentInspectionId) return;
+async function downloadReport() {
+    if (!currentInspectionId) return null;
     const token = api.getToken();
-    window.open(`/api/reports/${currentInspectionId}/download?token=${token}`, '_blank');
+
+    // Check if running in PyWebView desktop app
+    if (window.pywebview && window.pywebview.api && window.pywebview.api.save_report_pdf) {
+        showToast('Opening file save dialog...', 'info');
+        try {
+            const res = await window.pywebview.api.save_report_pdf(currentInspectionId, token);
+            if (res && res.success) {
+                showToast(`PDF report saved successfully to your PC!`, 'success');
+                return res.saved_path;
+            } else if (res && res.error) {
+                showToast(`Failed to save PDF: ${res.error}`, 'error');
+            }
+        } catch (err) {
+            console.error('PyWebView desktop save error:', err);
+        }
+    }
+
+    // Web browser fallback: Fetch blob and trigger download via Blob URL
+    try {
+        showToast('Downloading PDF report...', 'info');
+        const url = `/api/reports/${currentInspectionId}/download?token=${token}`;
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error(`HTTP error ${resp.status}`);
+
+        const blob = await resp.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = `inspection_report_${currentInspectionId.slice(0, 8)}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+        showToast('PDF report downloaded to your PC!', 'success');
+        return true;
+    } catch (err) {
+        showToast(`Download failed: ${err.message}`, 'error');
+        return null;
+    }
 }
 
-async function sendReport() {
+async function sendWhatsAppReport() {
     if (!currentInspectionId) return;
 
-    const btn = document.getElementById('send-report-btn');
-    btn.disabled = true;
+    const phoneInput = document.getElementById('send-client-phone');
+    const rawPhone = phoneInput ? phoneInput.value.trim() : '';
+    const noteInput = document.getElementById('send-note');
+    const note = noteInput ? noteInput.value.trim() : '';
 
-    const clientEmail = document.getElementById('send-client-email').value.trim();
-    const managerEmail = document.getElementById('send-manager-email').value.trim();
-    const note = document.getElementById('send-note').value.trim();
-    const senderEmail = document.getElementById('send-sender-email').value.trim();
-    const senderPassword = document.getElementById('send-sender-password').value.trim();
-
-    if (!clientEmail && !managerEmail) {
-        showToast('Please enter at least one email address', 'error');
-        btn.disabled = false;
+    if (!rawPhone) {
+        showToast('Please enter a WhatsApp phone number', 'error');
         return;
     }
 
+    // Clean phone number (keep digits only)
+    let cleanPhone = rawPhone.replace(/[^0-9]/g, '');
+
+    // Format local zero prefixes (e.g. 03001234567 -> 923001234567)
+    if (cleanPhone.startsWith('0')) {
+        cleanPhone = '92' + cleanPhone.substring(1);
+    }
+
+    // Step 1: Save/Download PDF report directly to device
+    await downloadReport();
+
+    // Step 2: Build PDF report download URL
+    const token = api.getToken();
+    const pdfUrl = `${window.location.origin}/api/reports/${currentInspectionId}/download?token=${token}`;
+
+    let vehicleInfo = '';
     try {
-        const response = await api.post(`/api/reports/${currentInspectionId}/send`, {
-            client_email: clientEmail || null,
-            manager_email: managerEmail || null,
-            note: note || null,
-            sender_email: senderEmail || null,
-            sender_password: senderPassword || null,
-        });
-        if (response && response.simulated) {
-            showToast('SMTP not configured. Saved simulated email locally!', 'info');
-            console.log(response.message);
-        } else {
-            showToast('Report sent successfully!', 'success');
+        const insp = await api.get(`/api/inspections/${currentInspectionId}`);
+        if (insp && insp.vehicle) {
+            vehicleInfo = `${insp.vehicle.make || ''} ${insp.vehicle.model || ''} (${insp.vehicle.license_plate || 'N/A'})`.trim();
         }
     } catch (err) {
-        showToast(`Failed to send: ${err.message}`, 'error');
-    } finally {
-        btn.disabled = false;
+        // Non-critical
+    }
+
+    // Step 3: Construct formatted WhatsApp message
+    let messageText = `🚗 *Vehicle Inspection Report*\n`;
+    if (vehicleInfo) {
+        messageText += `*Vehicle:* ${vehicleInfo}\n`;
+    }
+    messageText += `\nDear Client,\nYour vehicle inspection report PDF has been downloaded to your device.\n\n`;
+    messageText += `📄 *Download PDF Report:* ${pdfUrl}\n`;
+
+    if (note) {
+        messageText += `\n*Note:* ${note}\n`;
+    }
+
+    messageText += `\nThank you for choosing our inspection service!`;
+
+    // Step 4: Check for Web Share API with PDF file (for mobile browsers)
+    let sharedViaWebShare = false;
+    if (navigator.share && navigator.canShare) {
+        try {
+            const resp = await fetch(pdfUrl);
+            const blob = await resp.blob();
+            const pdfFile = new File([blob], `inspection_report_${currentInspectionId.slice(0, 8)}.pdf`, { type: 'application/pdf' });
+            if (navigator.canShare({ files: [pdfFile] })) {
+                await navigator.share({
+                    title: 'Vehicle Inspection Report PDF',
+                    text: messageText,
+                    files: [pdfFile]
+                });
+                sharedViaWebShare = true;
+                showToast('PDF report shared to WhatsApp!', 'success');
+            }
+        } catch (shareErr) {
+            console.log('Web Share fallback to WhatsApp link:', shareErr);
+        }
+    }
+
+    if (!sharedViaWebShare) {
+        // Open WhatsApp Web or Mobile app deep link in default system browser
+        const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(messageText)}`;
+
+        if (window.pywebview && window.pywebview.api && window.pywebview.api.open_external_url) {
+            window.pywebview.api.open_external_url(waUrl);
+        } else {
+            window.open(waUrl, '_blank');
+        }
+        showToast('PDF downloaded! Opening WhatsApp to send report...', 'success');
     }
 }
 

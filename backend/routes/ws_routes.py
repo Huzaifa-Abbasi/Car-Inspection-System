@@ -299,7 +299,13 @@ async def websocket_inspection(websocket: WebSocket, inspection_id: str):
                             if val and detection_svc._pipeline._vehicle_gate is None:
                                 print("[INFO] Enabling vehicle detection gate (yolov8n) dynamically...")
                                 from ultralytics import YOLO
-                                detection_svc._pipeline._vehicle_gate = YOLO("yolov8n.pt")
+                                import sys
+                                from pathlib import Path
+                                if getattr(sys, "frozen", False):
+                                    yolov8n_path = Path(sys._MEIPASS) / "yolov8n.pt"
+                                else:
+                                    yolov8n_path = Path(__file__).resolve().parent.parent.parent / "yolov8n.pt"
+                                detection_svc._pipeline._vehicle_gate = YOLO(str(yolov8n_path))
                                 detection_svc._pipeline._vehicle_conf = 0.30
                                 detection_svc._pipeline._vehicle_cache = False
                                 detection_svc._pipeline._vehicle_check_interval = 3
@@ -405,7 +411,13 @@ async def websocket_inspection(websocket: WebSocket, inspection_id: str):
                             if val and detection_svc._pipeline._vehicle_gate is None:
                                 print("[INFO] Enabling vehicle detection gate (yolov8n) dynamically...")
                                 from ultralytics import YOLO
-                                detection_svc._pipeline._vehicle_gate = YOLO("yolov8n.pt")
+                                import sys
+                                from pathlib import Path
+                                if getattr(sys, "frozen", False):
+                                    yolov8n_path = Path(sys._MEIPASS) / "yolov8n.pt"
+                                else:
+                                    yolov8n_path = Path(__file__).resolve().parent.parent.parent / "yolov8n.pt"
+                                detection_svc._pipeline._vehicle_gate = YOLO(str(yolov8n_path))
                                 detection_svc._pipeline._vehicle_conf = 0.30
                                 detection_svc._pipeline._vehicle_cache = False
                                 detection_svc._pipeline._vehicle_check_interval = 3

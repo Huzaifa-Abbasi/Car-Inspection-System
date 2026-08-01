@@ -523,37 +523,16 @@
                                     Download PDF
                                 </button>
                                 <div class="form-group" style="margin-top:16px;">
-                                    <label for="send-client-email">Client Email</label>
-                                    <input type="email" id="send-client-email" placeholder="client@email.com">
-                                </div>
-                                <div class="form-group">
-                                    <label for="send-manager-email">Manager Email</label>
-                                    <input type="email" id="send-manager-email" placeholder="manager@email.com">
+                                    <label for="send-client-phone">Client WhatsApp Number</label>
+                                    <input type="tel" id="send-client-phone" placeholder="e.g. +923001234567 or 03001234567">
                                 </div>
                                 <div class="form-group">
                                     <label for="send-note">Additional Note</label>
-                                    <textarea id="send-note" rows="3" placeholder="Optional note..."></textarea>
+                                    <textarea id="send-note" rows="3" placeholder="Optional note for client..."></textarea>
                                 </div>
-                                <details class="smtp-config-details">
-                                    <summary>
-                                        <span>⚙ SMTP / Gmail Settings (Optional)</span>
-                                        <svg class="details-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
-                                    </summary>
-                                    <div class="smtp-config-content">
-                                        <div class="form-group">
-                                            <label for="send-sender-email">Gmail Address</label>
-                                            <input type="email" id="send-sender-email" placeholder="your-email@gmail.com">
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="send-sender-password">App Password</label>
-                                            <input type="password" id="send-sender-password" placeholder="xxxx xxxx xxxx xxxx">
-                                            <small class="help-text">Use a 16-character Google App Password.</small>
-                                        </div>
-                                    </div>
-                                </details>
-                                <button class="btn btn-primary btn-full" style="margin-top:16px;" onclick="sendReport()" id="send-report-btn">
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-                                    Send Report
+                                <button class="btn btn-primary btn-full" style="margin-top:16px; background-color: #25D366; border-color: #25D366;" onclick="sendWhatsAppReport()" id="send-report-btn">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.705 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"/></svg>
+                                    Send via WhatsApp
                                 </button>
                                 <button class="btn btn-ghost btn-full" style="margin-top:12px;" onclick="completeInspection()">
                                     ✓ Complete Inspection

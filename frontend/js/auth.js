@@ -25,13 +25,13 @@ function togglePassword() {
 }
 
 function showRegister(e) {
-    e.preventDefault();
+    if (e && typeof e.preventDefault === 'function') e.preventDefault();
     document.getElementById('login-card').style.display = 'none';
     document.getElementById('register-card').style.display = '';
 }
 
 function showLogin(e) {
-    e.preventDefault();
+    if (e && typeof e.preventDefault === 'function') e.preventDefault();
     document.getElementById('login-card').style.display = '';
     document.getElementById('register-card').style.display = 'none';
 }
@@ -56,7 +56,7 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
     btn.querySelector('span').textContent = 'Signing in...';
 
     try {
-        const data = await api.post('/api/auth/login', { email, password });
+        const data = await api.post('/api/auth/login', { email, password, role: selectedLoginRole });
         api.setToken(data.access_token);
         localStorage.setItem('auth_user', JSON.stringify(data.user));
         enterApp(data.user);
@@ -98,7 +98,11 @@ document.getElementById('register-form').addEventListener('submit', async (e) =>
         successEl.style.display = '';
         document.getElementById('register-form').reset();
 
-        setTimeout(() => showLogin({ preventDefault: () => {} }), 2000);
+        const registeredRole = selectedRegRole;
+        setTimeout(() => {
+            showLogin({ preventDefault: () => {} });
+            selectRole(registeredRole);
+        }, 2000);
     } catch (err) {
         errorEl.textContent = err.message;
         errorEl.style.display = '';
@@ -115,8 +119,9 @@ function logout() {
     document.getElementById('screen-login').classList.add('active');
     document.getElementById('screen-login').style.display = '';
 
-    // Reset form
+    // Reset form & role selection
     document.getElementById('login-form').reset();
+    selectRole('inspector');
     document.getElementById('login-error').style.display = 'none';
 }
 

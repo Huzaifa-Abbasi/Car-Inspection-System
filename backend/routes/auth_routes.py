@@ -42,8 +42,16 @@ def login(body: LoginRequest, db: Session = Depends(get_db)):
     if not user or not verify_password(body.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
+    if body.role and user.role != body.role:
+        role_label = user.role.capitalize()
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Access denied: Account registered as '{role_label}'. Please select '{role_label}' to log in.",
+        )
+
     token = create_access_token(user.id, user.role)
     return TokenResponse(
         access_token=token,
         user=UserOut.model_validate(user),
     )
+

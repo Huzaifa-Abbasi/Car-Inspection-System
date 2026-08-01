@@ -91,9 +91,43 @@ function renderHistoryTable(inspections) {
     }).join('');
 }
 
-function downloadHistoryReport(inspectionId) {
+async function downloadHistoryReport(inspectionId) {
     const token = api.getToken();
-    window.open(`/api/reports/${inspectionId}/download?token=${token}`, '_blank');
+
+    if (window.pywebview && window.pywebview.api && window.pywebview.api.save_report_pdf) {
+        showToast('Opening file save dialog...', 'info');
+        try {
+            const res = await window.pywebview.api.save_report_pdf(inspectionId, token);
+            if (res && res.success) {
+                showToast(`PDF report saved successfully to your PC!`, 'success');
+                return;
+            } else if (res && res.error) {
+                showToast(`Failed to save PDF: ${res.error}`, 'error');
+            }
+        } catch (err) {
+            console.error('PyWebView desktop save error:', err);
+        }
+    }
+
+    try {
+        showToast('Downloading PDF report...', 'info');
+        const url = `/api/reports/${inspectionId}/download?token=${token}`;
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error(`HTTP error ${resp.status}`);
+
+        const blob = await resp.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = `inspection_report_${inspectionId.slice(0, 8)}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+        showToast('PDF report downloaded to your PC!', 'success');
+    } catch (err) {
+        showToast(`Download failed: ${err.message}`, 'error');
+    }
 }
 
 async function deleteInspection(inspectionId) {

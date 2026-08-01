@@ -41,6 +41,39 @@ def generate_report(
     return {"message": "Report generated", "path": str(pdf_path)}
 
 
+@router.get("/{inspection_id}/html")
+def get_report_html(
+    inspection_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get the rendered HTML report matching the PDF template."""
+    inspection = (
+        db.query(Inspection)
+        .options(
+            joinedload(Inspection.vehicle),
+            joinedload(Inspection.inspector),
+            joinedload(Inspection.defects),
+        )
+        .filter(Inspection.id == inspection_id)
+        .first()
+    )
+    if not inspection:
+        raise HTTPException(status_code=404, detail="Inspection not found")
+
+    report_svc = ReportService()
+    pdf_path = report_svc.get_report_path(inspection_id)
+    html_path = pdf_path.with_suffix(".html")
+
+    if not html_path.exists():
+        report_svc.generate_pdf(inspection)
+
+    if html_path.exists():
+        return FileResponse(path=str(html_path), media_type="text/html")
+
+    raise HTTPException(status_code=404, detail="HTML report not found")
+
+
 @router.get("/{inspection_id}/download")
 def download_report(
     inspection_id: str,
@@ -48,34 +81,45 @@ def download_report(
     current_user: User = Depends(get_current_user),
 ):
     """Download the generated PDF report."""
+    inspection = (
+        db.query(Inspection)
+        .options(
+            joinedload(Inspection.vehicle),
+            joinedload(Inspection.inspector),
+            joinedload(Inspection.defects),
+        )
+        .filter(Inspection.id == inspection_id)
+        .first()
+    )
+    if not inspection:
+        raise HTTPException(status_code=404, detail="Inspection not found")
+
     report_svc = ReportService()
     pdf_path = report_svc.get_report_path(inspection_id)
 
-    if pdf_path.exists() and pdf_path.stat().st_size < 1024:
+    # Check if a valid PDF (>1KB and starts with magic bytes %PDF-) exists
+    is_valid_pdf = False
+    if pdf_path.exists() and pdf_path.stat().st_size > 1024:
         try:
-            pdf_path.unlink()
+            with open(pdf_path, "rb") as f:
+                if f.read(5).startswith(b"%PDF-"):
+                    is_valid_pdf = True
         except Exception:
             pass
 
-    if not pdf_path.exists():
-        raise HTTPException(status_code=404, detail="Report not found. Generate it first.")
+    if not is_valid_pdf:
+        # Generate the PDF report on demand
+        pdf_path = report_svc.generate_pdf(inspection)
 
-    # Fallback to HTML if WeasyPrint is not fully configured on Windows
-    from backend.services.report_service import HAS_WEASYPRINT
-    if not HAS_WEASYPRINT:
-        html_path = pdf_path.with_suffix(".html")
-        if html_path.exists():
-            return FileResponse(
-                path=str(html_path),
-                media_type="text/html",
-                filename=f"inspection_report_{inspection_id}.html",
-            )
+    if pdf_path.exists() and pdf_path.stat().st_size > 100:
+        return FileResponse(
+            path=str(pdf_path),
+            media_type="application/pdf",
+            filename=f"inspection_report_{inspection_id}.pdf",
+            headers={"Content-Disposition": f"attachment; filename=inspection_report_{inspection_id}.pdf"}
+        )
 
-    return FileResponse(
-        path=str(pdf_path),
-        media_type="application/pdf",
-        filename=f"inspection_report_{inspection_id}.pdf",
-    )
+    raise HTTPException(status_code=500, detail="Failed to generate PDF report.")
 
 
 @router.post("/{inspection_id}/send")
