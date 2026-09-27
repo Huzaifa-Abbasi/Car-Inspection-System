@@ -2,7 +2,7 @@ import cv2
 from collections import deque
 from ultralytics import YOLO
 from src.camera import VideoStream
-from src.detector import DefectDetector
+from src.detector import DefectDetector, resolve_model_path
 
 # COCO class IDs for vehicles (used by the pretrained gate model)
 _VEHICLE_COCO_IDS = [2, 5, 7]   # car, bus, truck
@@ -35,11 +35,21 @@ class InspectionPipeline:
         stability_frames=5,    # frames a detection must persist before shown
         require_vehicle=True,  # set False to disable vehicle gate (for testing)
     ):
-        self.stream   = VideoStream(src=camera_src).start()
-        self.detector = DefectDetector(
-            model_path=model_path,
-            conf_threshold=conf_threshold,
-        )
+        # --- 1. Open camera FIRST so it works even if model loading fails ---
+        self.stream = VideoStream(src=camera_src).start()
+
+        # --- 2. Load defect detection model (graceful failure) ---
+        self.detector = None
+        self._model_error = None
+        try:
+            self.detector = DefectDetector(
+                model_path=model_path,
+                conf_threshold=conf_threshold,
+            )
+        except Exception as e:
+            self._model_error = str(e)
+            print(f"[ERROR] Failed to load defect detection model: {e}")
+            print("[WARNING] Camera will stream but defect detection is DISABLED.")
 
         self.resize_width   = resize_width
         self.skip_frames    = skip_frames
@@ -51,27 +61,25 @@ class InspectionPipeline:
         self.stability_frames    = stability_frames
         self.detection_history   = deque(maxlen=stability_frames)
 
-        # Vehicle detection gate — lightweight pretrained model (~6 MB,
-        # auto-downloads once via ultralytics).  Only frames that contain a
-        # car/truck/bus are forwarded to the damage detector.
+        # --- 3. Load vehicle detection gate (graceful failure) ---
         self.require_vehicle = require_vehicle
+        self._vehicle_gate = None
         if require_vehicle:
-            print("[INFO] Loading vehicle detection gate (yolov8n) ...")
-            import sys
-            from pathlib import Path
-            if getattr(sys, "frozen", False):
-                yolov8n_path = Path(sys._MEIPASS) / "yolov8n.pt"
-            else:
-                yolov8n_path = Path(__file__).resolve().parent.parent / "yolov8n.pt"
-            self._vehicle_gate = YOLO(str(yolov8n_path))
-            self._vehicle_conf = 0.30
-            self._vehicle_cache = False
-            self._vehicle_check_interval = 3
-            self._vehicle_frame_counter  = 0
-            print("[INFO] Vehicle detection gate ready.")
+            try:
+                print("[INFO] Loading vehicle detection gate (yolov8n) ...")
+                yolov8n_path = resolve_model_path("yolov8n.pt")
+                self._vehicle_gate = YOLO(str(yolov8n_path))
+                self._vehicle_conf = 0.30
+                self._vehicle_cache = False
+                self._vehicle_check_interval = 3
+                self._vehicle_frame_counter  = 0
+                print("[INFO] Vehicle detection gate ready.")
+            except Exception as e:
+                print(f"[ERROR] Failed to load vehicle gate model: {e}")
+                print("[WARNING] Vehicle gate DISABLED — all frames will be processed.")
+                self._vehicle_gate = None
         else:
             print("[INFO] Vehicle detection gate DISABLED (testing mode).")
-            self._vehicle_gate = None
 
     # ------------------------------------------------------------------
     # Vehicle gate
@@ -167,6 +175,10 @@ class InspectionPipeline:
         if w > self.resize_width:
             scale = self.resize_width / float(w)
             frame = cv2.resize(frame, (self.resize_width, int(h * scale)))
+
+        # If detector failed to load, just return the raw camera frame
+        if self.detector is None:
+            return True, frame
 
         # 2. OPTIMIZATION: Alternate Frame Skipping
         self.frame_count += 1

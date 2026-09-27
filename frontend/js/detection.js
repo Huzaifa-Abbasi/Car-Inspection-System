@@ -17,9 +17,12 @@ function toggleBrowserCamera(checked) {
     }
 }
 
+// Two fixed camera options with persistent DroidCam discovery
+let discoveredDroidCamUrl = null;
+
 const defaultDevices = [
-    { label: 'Default Camera (Webcam)', value: '0', _isDefault: true },
-    { label: 'OBS/DroidCam Virtual Camera', value: '1', _isDefault: true }
+    { label: 'Default Camera (Webcam)', value: '0' },
+    { label: 'DroidCam (Mobile Camera)', value: '1' },
 ];
 
 function toggleAddDeviceForm(show) {
@@ -34,105 +37,53 @@ function toggleAddDeviceForm(show) {
 }
 
 function loadCameraDevices() {
-    let devicesRaw = localStorage.getItem('car_inspection_cameras');
-    let customDevices = [];
-    if (devicesRaw) {
-        try {
-            customDevices = JSON.parse(devicesRaw);
-            // Migrate: filter out default devices from custom device list
-            customDevices = customDevices.filter(d => d.value !== '0' && d.value !== '1');
-        } catch (e) {
-            console.error('[Camera] Error parsing custom devices:', e);
-        }
+    const selectEl = document.getElementById('sel-camera-source');
+    if (!selectEl) return;
+
+    const prevValue = selectEl.value;
+
+    const droidcamVal = discoveredDroidCamUrl || '1';
+    selectEl.innerHTML = `
+        <option value="0">Default Camera (Webcam)</option>
+        <option value="${droidcamVal}">DroidCam (Mobile Camera)</option>
+    `;
+
+    if (prevValue === '0' || prevValue === droidcamVal || prevValue === '1') {
+        selectEl.value = (prevValue === '1' && discoveredDroidCamUrl) ? discoveredDroidCamUrl : prevValue;
+    } else {
+        selectEl.value = '0';
     }
 
-    let deviceList = [...defaultDevices, ...customDevices];
-    
-    // Normalize comparison of camera values / URLs to check for duplicates
-    const hasUrlOrValue = (val) => {
-        return deviceList.some(d => {
-            const v1 = d.value.replace(/\/+$/, '').toLowerCase();
-            const v2 = val.replace(/\/+$/, '').toLowerCase();
-            return v1 === v2 || v1 + '/video' === v2 || v1 === v2 + '/video';
-        });
-    };
-
-    // Populate select dropdown
-    const populateSelect = () => {
-        const selectEl = document.getElementById('sel-camera-source');
-        if (!selectEl) return;
-        const prevValue = selectEl.value;
-
-        if (deviceList.length === 0) {
-            selectEl.innerHTML = '<option value="" disabled selected>No cameras found — add an IP stream below</option>';
-            return;
-        }
-
-        selectEl.innerHTML = deviceList.map(d => `<option value="${d.value}">${d.label}</option>`).join('');
-        if (prevValue && deviceList.some(d => d.value === prevValue)) {
-            selectEl.value = prevValue;
-        } else {
-            selectEl.value = deviceList[0].value;
-        }
-    };
-
-    // Populate custom devices list with delete buttons
-    const populateCustomList = () => {
-        const customListEl = document.getElementById('custom-devices-list');
-        if (!customListEl) return;
-        
-        // Only show actual user-added custom streams in the Saved Devices list (exclude defaults and auto-detected)
-        const savedCustomDevices = deviceList.filter(d => !d._isDefault && !d._autoDetected);
-        
-        if (savedCustomDevices.length === 0) {
-            customListEl.innerHTML = '';
-        } else {
-            customListEl.innerHTML = '<span style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); width: 100%; margin-top: 6px;">Saved Devices:</span>' + 
-            savedCustomDevices.map(d => `
-                <span class="custom-device-tag" style="display: inline-flex; align-items: center; gap: 6px; background: rgba(0, 229, 255, 0.08); border: 1px solid var(--accent-cyan-glow); padding: 4px 10px; border-radius: 12px; color: var(--accent-cyan); font-size: 0.75rem;">
-                    ${d.label}
-                    <span onclick="removeCameraDevice('${d.value}')" style="cursor: pointer; font-weight: bold; color: var(--accent-red); margin-left: 4px; font-size: 0.95rem; line-height: 1;" title="Remove device">&times;</span>
-                </span>
-            `).join('');
-        }
-    };
-
-    populateSelect();
-    populateCustomList();
-
-    // Asynchronously detect local cameras and DroidCam streams
+    // Proactively scan for DroidCam IP stream or virtual camera on local system
     fetch('/api/cameras/detect')
         .then(res => res.json())
         .then(data => {
-            let updated = false;
-
-            // Add detected local cameras
+            let foundSource = null;
+            // Check if a virtual camera index (e.g. 2 or 1) is active from DroidCam PC Client
             if (data.cameras && data.cameras.length > 0) {
-                data.cameras.forEach(idx => {
-                    const idxStr = String(idx);
-                    if (!hasUrlOrValue(idxStr)) {
-                        deviceList.push({ label: `Local Camera ${idx}`, value: idxStr, _autoDetected: true });
-                        updated = true;
-                    }
-                });
+                const altCam = data.cameras.find(c => c > 0);
+                if (altCam !== undefined) {
+                    foundSource = String(altCam);
+                }
+            }
+            // Otherwise use WiFi IP stream URL
+            if (!foundSource && data.streams && data.streams.length > 0) {
+                foundSource = data.streams[0].url;
             }
 
-            // Add discovered DroidCam streams
-            if (data.streams && data.streams.length > 0) {
-                data.streams.forEach(stream => {
-                    if (!hasUrlOrValue(stream.url)) {
-                        deviceList.push({ label: stream.label, value: stream.url, _autoDetected: true });
-                        updated = true;
+            if (foundSource) {
+                discoveredDroidCamUrl = foundSource;
+                const droidcamOpt = selectEl.querySelector('option:nth-child(2)');
+                if (droidcamOpt) {
+                    const wasSelected = (selectEl.value === droidcamOpt.value || selectEl.value === '1' || selectEl.value === '2');
+                    droidcamOpt.value = discoveredDroidCamUrl;
+                    if (wasSelected) {
+                        selectEl.value = discoveredDroidCamUrl;
                     }
-                });
-            }
-
-            if (updated) {
-                populateSelect();
-                populateCustomList();
+                }
             }
         })
-        .catch(err => console.error('[Camera Detection] Async scan error:', err));
+        .catch(err => console.error('[Camera Detection] DroidCam scan error:', err));
 }
 
 function addCameraDevice() {
@@ -152,9 +103,8 @@ function addCameraDevice() {
         } catch (e) {}
     }
 
-    // Check duplicate value (against defaults + current custom devices)
-    const currentList = [...defaultDevices, ...customDevices];
-    const isDuplicate = currentList.some(d => {
+    // Check duplicate value (against current custom devices)
+    const isDuplicate = customDevices.some(d => {
         const v1 = d.value.replace(/\/+$/, '').toLowerCase();
         const v2 = value.replace(/\/+$/, '').toLowerCase();
         return v1 === v2 || v1 + '/video' === v2 || v1 === v2 + '/video';
@@ -205,13 +155,14 @@ function removeCameraDevice(value) {
 function onCameraSourceChange(value) {
     console.log('[Camera] Source selected:', value);
     // If a scan is currently active, restart the stream with the new camera
-    if (ws && ws.readyState === WebSocket.OPEN) {
+    if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
         console.log('[Camera] Live-switching camera to:', value);
         stopDetectionStream();
-        // Small delay to allow cleanup before reconnecting
+        showToast('Switching camera...', 'info');
+        // Allow time for previous camera thread and Windows DirectShow handle to close cleanly
         setTimeout(() => {
             startDetectionStream();
-        }, 300);
+        }, 600);
     }
 }
 

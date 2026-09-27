@@ -247,6 +247,15 @@ async def websocket_inspection(websocket: WebSocket, inspection_id: str):
     finally:
         db.close()
 
+    # Clean up any active previous session for this inspection before starting a new one
+    old_svc = _active_sessions.pop(inspection_id, None)
+    if old_svc:
+        try:
+            old_svc.stop()
+        except Exception:
+            pass
+        await asyncio.sleep(0.25)
+
     # Start the detection service
     detection_svc = None
     try:
@@ -259,15 +268,25 @@ async def websocket_inspection(websocket: WebSocket, inspection_id: str):
         )
         try:
             detection_svc.start()
-        except RuntimeError as cam_err:
+        except (RuntimeError, Exception) as cam_err:
             print(f"[ERROR] Camera failed to start: {cam_err}")
             await websocket.send_json({
                 "type": "error",
-                "message": str(cam_err),
+                "message": f"Camera error: {cam_err}. Make sure no other app is using the camera, "
+                           "and check Windows Settings > Privacy > Camera permissions.",
             })
             await websocket.close()
             return
+
         _active_sessions[inspection_id] = detection_svc
+
+        # Notify client if model failed to load (camera still works)
+        if detection_svc.model_error:
+            await websocket.send_json({
+                "type": "status",
+                "message": f"⚠️ AI model not available: {detection_svc.model_error}. "
+                           "Camera is streaming but defect detection is disabled.",
+            })
 
         await websocket.send_json({"type": "status", "message": "Camera started. Scanning..."})
 
@@ -298,13 +317,8 @@ async def websocket_inspection(websocket: WebSocket, inspection_id: str):
                             detection_svc._pipeline.require_vehicle = val
                             if val and detection_svc._pipeline._vehicle_gate is None:
                                 print("[INFO] Enabling vehicle detection gate (yolov8n) dynamically...")
-                                from ultralytics import YOLO
-                                import sys
-                                from pathlib import Path
-                                if getattr(sys, "frozen", False):
-                                    yolov8n_path = Path(sys._MEIPASS) / "yolov8n.pt"
-                                else:
-                                    yolov8n_path = Path(__file__).resolve().parent.parent.parent / "yolov8n.pt"
+                                from src.detector import resolve_model_path
+                                yolov8n_path = resolve_model_path("yolov8n.pt")
                                 detection_svc._pipeline._vehicle_gate = YOLO(str(yolov8n_path))
                                 detection_svc._pipeline._vehicle_conf = 0.30
                                 detection_svc._pipeline._vehicle_cache = False
@@ -410,13 +424,8 @@ async def websocket_inspection(websocket: WebSocket, inspection_id: str):
                             detection_svc._pipeline.require_vehicle = val
                             if val and detection_svc._pipeline._vehicle_gate is None:
                                 print("[INFO] Enabling vehicle detection gate (yolov8n) dynamically...")
-                                from ultralytics import YOLO
-                                import sys
-                                from pathlib import Path
-                                if getattr(sys, "frozen", False):
-                                    yolov8n_path = Path(sys._MEIPASS) / "yolov8n.pt"
-                                else:
-                                    yolov8n_path = Path(__file__).resolve().parent.parent.parent / "yolov8n.pt"
+                                from src.detector import resolve_model_path
+                                yolov8n_path = resolve_model_path("yolov8n.pt")
                                 detection_svc._pipeline._vehicle_gate = YOLO(str(yolov8n_path))
                                 detection_svc._pipeline._vehicle_conf = 0.30
                                 detection_svc._pipeline._vehicle_cache = False

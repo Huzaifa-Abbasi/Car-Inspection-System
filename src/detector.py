@@ -1,10 +1,49 @@
+import sys
 import cv2
 import numpy as np
 from pathlib import Path
 from ultralytics import YOLO
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_MODEL_PATH = PROJECT_ROOT / "best.pt"
+if getattr(sys, "frozen", False):
+    PROJECT_ROOT = Path(sys._MEIPASS)
+else:
+    PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+
+def resolve_model_path(model_path=None):
+    """
+    Resolve model weights path across PyInstaller _internal directory,
+    executable directory, project root, and current working directory.
+    """
+    target = Path(model_path) if model_path else Path("best.pt")
+    if target.is_absolute() and target.exists():
+        return target
+
+    filename = target.name
+    candidates = []
+
+    if getattr(sys, "frozen", False):
+        candidates.append(Path(sys._MEIPASS) / filename)
+        candidates.append(Path(sys.executable).resolve().parent / filename)
+        candidates.append(Path(sys.executable).resolve().parent / "_internal" / filename)
+
+    candidates.append(PROJECT_ROOT / filename)
+    candidates.append(Path.cwd() / filename)
+
+    for c in candidates:
+        if c.exists():
+            print(f"[INFO] Resolved model '{filename}' at: {c}")
+            return c
+
+    # Print all checked paths to help diagnose missing-file errors
+    print(f"[WARNING] Model '{filename}' not found in any of these locations:")
+    for c in candidates:
+        print(f"  - {c}  (exists: {c.exists()})")
+
+    return candidates[0] if candidates else PROJECT_ROOT / filename
+
+
+DEFAULT_MODEL_PATH = resolve_model_path("best.pt")
 
 # Unique BGR color per fault class
 FAULT_CLASS_COLORS = {
@@ -61,12 +100,7 @@ class DefectDetector:
         iou_threshold=0.30,    # our post-process NMS threshold
         device=None,
     ):
-        if model_path is None:
-            model_path = DEFAULT_MODEL_PATH
-        else:
-            model_path = Path(model_path)
-            if not model_path.is_absolute():
-                model_path = PROJECT_ROOT / model_path
+        model_path = resolve_model_path(model_path)
 
         if not model_path.exists():
             raise FileNotFoundError(f"Model file not found: {model_path}")

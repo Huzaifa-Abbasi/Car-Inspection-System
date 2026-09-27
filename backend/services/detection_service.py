@@ -54,7 +54,12 @@ class DetectionService:
         self._defect_counter = 0
 
     def start(self):
-        """Start the camera and detection pipeline."""
+        """Start the camera and detection pipeline.
+
+        Raises RuntimeError if the camera fails to open (this is fatal).
+        Model loading failures are non-fatal — the camera will stream
+        but without defect detection.
+        """
         self._pipeline = InspectionPipeline(
             camera_src=self.camera_src,
             resize_width=self.resize_width,
@@ -65,6 +70,13 @@ class DetectionService:
         )
         if self._pipeline and self._pipeline.detector:
             self._pipeline.detector.iou_threshold = self.iou_threshold
+
+    @property
+    def model_error(self) -> str | None:
+        """Return the model loading error message, if any."""
+        if self._pipeline and self._pipeline._model_error:
+            return self._pipeline._model_error
+        return None
 
     def stop(self):
         """Stop the camera and clean up resources."""
@@ -95,6 +107,10 @@ class DetectionService:
         if w > self.resize_width:
             scale = self.resize_width / float(w)
             frame = cv2.resize(frame, (self.resize_width, int(h * scale)))
+
+        # If detector failed to load, just return the raw camera frame
+        if self._pipeline.detector is None:
+            return frame, []
 
         # Vehicle gate — skip if no car visible
         if not self._pipeline.has_vehicle(frame):
@@ -139,6 +155,10 @@ class DetectionService:
         if w > self.resize_width:
             scale = self.resize_width / float(w)
             frame = cv2.resize(frame, (self.resize_width, int(h * scale)))
+
+        # If detector failed to load, just return the raw camera frame
+        if self._pipeline.detector is None:
+            return frame, []
 
         # Vehicle gate — skip if no car visible
         if not self._pipeline.has_vehicle(frame):
